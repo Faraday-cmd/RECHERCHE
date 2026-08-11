@@ -1,0 +1,11 @@
+{
+  "welcome": "Welcome to Recherche V1 API",
+  "health": "Recherche API Operational",
+  "errors": {
+    "unauthorized": "Unauthorized access",
+    "forbidden": "Action forbidden for this role",
+    "not_found": "Resource not found",
+    "bad_request": "Invalid request",
+    "internal": "Internal server error"
+  }
+}

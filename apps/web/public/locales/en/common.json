@@ -1,0 +1,28 @@
+{
+  "app_name": "Recherche",
+  "tagline": "Information is the key",
+  "nav": {
+    "infos": "Information",
+    "search": "Search",
+    "friends": "Friends",
+    "login": "Sign In",
+    "register": "Sign Up",
+    "dashboard": "Dashboard"
+  },
+  "roles": {
+    "lehrer": "Teacher (Lehrer)",
+    "betreuer": "Guide / Advisor (Betreuer)",
+    "visa_companion": "Visa Companion",
+    "deutsch_institut": "German Institute"
+  },
+  "search": {
+    "placeholder": "Search courses, institutes, teachers...",
+    "location": "Search Location",
+    "filters": "Filters",
+    "sort_by": "Sort By"
+  },
+  "contact": {
+    "floating_button": "Contact",
+    "send_message": "Send Message"
+  }
+}

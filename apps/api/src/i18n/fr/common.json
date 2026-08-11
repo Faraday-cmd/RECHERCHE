@@ -1,0 +1,11 @@
+{
+  "welcome": "Bienvenue sur l'API Recherche V1",
+  "health": "API Recherche opérationnelle",
+  "errors": {
+    "unauthorized": "Accès non autorisé",
+    "forbidden": "Action interdite pour ce rôle",
+    "not_found": "Ressource non trouvée",
+    "bad_request": "Requête invalide",
+    "internal": "Erreur interne du serveur"
+  }
+}

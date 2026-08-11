@@ -1,0 +1,28 @@
+{
+  "app_name": "Recherche",
+  "tagline": "L'information est la clé",
+  "nav": {
+    "infos": "Informations",
+    "search": "Rechercher",
+    "friends": "Amis",
+    "login": "Connexion",
+    "register": "Inscription",
+    "dashboard": "Tableau de bord"
+  },
+  "roles": {
+    "lehrer": "Enseignant (Lehrer)",
+    "betreuer": "Accompagnateur (Betreuer)",
+    "visa_companion": "Visa Compagnon",
+    "deutsch_institut": "Institut d'Allemand"
+  },
+  "search": {
+    "placeholder": "Rechercher un cours, une école, un enseignant...",
+    "location": "Lieu de recherche",
+    "filters": "Filtres",
+    "sort_by": "Trier par"
+  },
+  "contact": {
+    "floating_button": "Contacter",
+    "send_message": "Envoyer un message"
+  }
+}

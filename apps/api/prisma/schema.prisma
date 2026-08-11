@@ -1,0 +1,513 @@
+// RECHERCHE V1 — MASTER PRISMA DATABASE SCHEMA
+// Database Engine: PostgreSQL 16 + PostGIS Extension
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ==========================================
+// 1. CORE IDENTITY & PRIVACY
+// ==========================================
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+  DELETED
+}
+
+enum ProfileVisibility {
+  PUBLIC
+  FRIENDS_ONLY
+  PRIVATE
+}
+
+model User {
+  id                    String                @id @default(uuid())
+  email                 String                @unique
+  passwordHash          String
+  name                  String
+  sex                   String
+  dob                   DateTime
+  permanentLocationGeom String?               // PostGIS Point WKT: POINT(longitude latitude)
+  bio                   String?
+  status                UserStatus            @default(ACTIVE)
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @updatedAt
+
+  privacySettings       UserPrivacySettings?
+  userRoles             UserRole[]
+  friendsRequested      Friendship[]          @relation("User1")
+  friendsReceived       Friendship[]          @relation("User2")
+  ratingsGiven          Rating[]
+  infoLikes             InfoLike[]
+  infoComments          InfoComment[]
+  infoShares            InfoShare[]
+  follows               Follow[]
+  reportsSubmitted      Report[]              @relation("Reporter")
+  auditLogs             AuditLog[]            @relation("AdminUser")
+
+  @@index([email])
+  @@index([status])
+}
+
+model UserPrivacySettings {
+  id                String            @id @default(uuid())
+  userId            String            @unique
+  user              User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  profileVisibility ProfileVisibility @default(PUBLIC)
+  showExactAddress  Boolean           @default(false)
+  showAge           Boolean           @default(true)
+}
+
+// ==========================================
+// 2. ROLE ARCHITECTURE & SUBSCRIPTIONS
+// ==========================================
+
+enum RoleCode {
+  LEHRER
+  BETREUER
+  VISA_COMPANION
+  DEUTSCH_INSTITUT
+}
+
+enum UserRoleStatus {
+  DRAFT
+  PENDING_PAYMENT
+  ACTIVE
+  INACTIVE
+  EXPIRED
+  SUSPENDED
+}
+
+enum SubscriptionStatus {
+  PENDING
+  ACTIVE
+  EXPIRING
+  EXPIRED
+  CANCELLED
+  SUSPENDED
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCESS
+  FAILED
+  REFUNDED
+}
+
+model Role {
+  id        String     @id @default(uuid())
+  code      RoleCode   @unique
+  name      String
+  userRoles UserRole[]
+}
+
+model UserRole {
+  id              String            @id @default(uuid())
+  userId          String
+  roleId          String
+  user            User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role            Role              @relation(fields: [roleId], references: [id])
+  status          UserRoleStatus    @default(DRAFT)
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  subscriptions   Subscription[]
+  providerProfile ProviderProfile?
+
+  @@unique([userId, roleId])
+  @@index([userId])
+  @@index([status])
+}
+
+model SubscriptionPlan {
+  id            String     @id @default(uuid())
+  code          String     @unique
+  targetRole    RoleCode
+  name          String
+  priceXAF      Decimal    @db.Decimal(12, 2)
+  includesRoles RoleCode[]
+  description   String
+}
+
+model Subscription {
+  id          String             @id @default(uuid())
+  userRoleId  String
+  userRole    UserRole           @relation(fields: [userRoleId], references: [id], onDelete: Cascade)
+  planCode    String
+  amountXAF   Decimal            @db.Decimal(12, 2)
+  status      SubscriptionStatus @default(PENDING)
+  startsAt    DateTime?
+  expiresAt   DateTime?
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  payments    Payment[]
+
+  @@index([userRoleId])
+  @@index([status])
+}
+
+model Payment {
+  id             String        @id @default(uuid())
+  subscriptionId String
+  subscription   Subscription  @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  idempotencyKey String        @unique
+  providerTxId   String?       @unique
+  paymentMethod  String        @default("ORANGE_MONEY")
+  amountXAF      Decimal       @db.Decimal(12, 2)
+  status         PaymentStatus @default(PENDING)
+  payloadJson    Json?
+  createdAt      DateTime      @default(now())
+
+  @@index([subscriptionId])
+  @@index([idempotencyKey])
+}
+
+// ==========================================
+// 3. PROVIDER PROFILES & CAMPUSES
+// ==========================================
+
+enum ProviderPublicationStatus {
+  DRAFT
+  CONFIGURED
+  PUBLISHED
+  UNPUBLISHED
+}
+
+model ProviderProfile {
+  id                  String                    @id @default(uuid())
+  userRoleId          String                    @unique
+  userRole            UserRole                  @relation(fields: [userRoleId], references: [id], onDelete: Cascade)
+  displayName         String
+  shortBio            String
+  fullDescription     String
+  profilePicUrl       String?
+  coverPicUrl         String?
+  phoneNumbers        Json                      // Array of contact phone objects
+  openingHours        Json?
+  yearFounded         Int?
+  fixedLocationGeom   String?                   // PostGIS Point WKT: POINT(longitude latitude)
+  publicationStatus   ProviderPublicationStatus @default(DRAFT)
+  createdAt           DateTime                  @default(now())
+  updatedAt           DateTime                  @updatedAt
+
+  campuses            Campus[]
+  infos               Info[]
+  currentCourses      CurrentCourse[]
+  follows             Follow[]
+  ratings             Rating[]
+
+  @@index([displayName])
+  @@index([publicationStatus])
+}
+
+model Campus {
+  id                String                     @id @default(uuid())
+  providerProfileId String
+  providerProfile   ProviderProfile            @relation(fields: [providerProfileId], references: [id], onDelete: Cascade)
+  name              String
+  address           String
+  locationGeom      String                     // PostGIS Point WKT: POINT(longitude latitude)
+  contactPhones     Json
+  openingHours      Json
+  createdAt         DateTime                   @default(now())
+  updatedAt         DateTime                   @updatedAt
+
+  coursesAvailable  CampusCourseAvailability[]
+  currentCourses    CurrentCourse[]
+
+  @@index([providerProfileId])
+}
+
+model CampusCourseAvailability {
+  id        String   @id @default(uuid())
+  campusId  String
+  campus    Campus   @relation(fields: [campusId], references: [id], onDelete: Cascade)
+  levelCode String   // e.g., A1, A2, B1, B2, C1, C2
+  priceXAF  Decimal? @db.Decimal(12, 2)
+
+  @@unique([campusId, levelCode])
+}
+
+// ==========================================
+// 4. CONTENT SYSTEMS (INFOS & CURRENT COURSES)
+// ==========================================
+
+enum InfoStatus {
+  PUBLISHED
+  EXPIRED
+  DELETED
+}
+
+model Info {
+  id                String          @id @default(uuid())
+  providerProfileId String
+  providerProfile   ProviderProfile @relation(fields: [providerProfileId], references: [id], onDelete: Cascade)
+  title             String
+  summary           String
+  description       String
+  infoType          String
+  contentLang       String          @default("de")
+  photosJson        Json?           // Up to 3 photos
+  videoUrl          String?         // Up to 1 video
+  campusId          String?
+  courseId          String?
+  ctaType           String?         // CONTACT, VIEW_COURSE, VIEW_PROFILE, NONE
+  status            InfoStatus      @default(PUBLISHED)
+  publishedAt       DateTime        @default(now())
+  expiresAt         DateTime        // Default 5 days after publishing
+
+  likes             InfoLike[]
+  comments          InfoComment[]
+  shares            InfoShare[]
+
+  @@index([providerProfileId])
+  @@index([status])
+  @@index([expiresAt])
+}
+
+model CurrentCourse {
+  id                String          @id @default(uuid())
+  providerProfileId String
+  providerProfile   ProviderProfile @relation(fields: [providerProfileId], references: [id], onDelete: Cascade)
+  campusId          String
+  campus            Campus          @relation(fields: [campusId], references: [id], onDelete: Cascade)
+  title             String
+  level             String
+  language          String          @default("German")
+  shortDescription  String
+  fullDescription   String
+  startDate         DateTime        // V1 constraint: Exactly ONE start date per course publication
+  durationPeriod    String
+  priceXAF          Decimal         @db.Decimal(12, 2)
+  priceNote         String?
+  capacity          Int?
+  enrolledCount     Int             @default(0) // Manually maintained participant count
+  photosJson        Json?           // Up to 3 photos
+  videoUrl          String?         // Up to 1 video
+  publishToInfo     Boolean         @default(true)
+  publishToCourses  Boolean         @default(true)
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  @@index([providerProfileId])
+  @@index([campusId])
+  @@index([startDate])
+}
+
+// ==========================================
+// 5. SOCIAL, INTERACTIONS & FRIENDS
+// ==========================================
+
+enum FriendshipStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+}
+
+model Follow {
+  id                String          @id @default(uuid())
+  followerUserId    String
+  follower          User            @relation(fields: [followerUserId], references: [id], onDelete: Cascade)
+  providerProfileId String
+  providerProfile   ProviderProfile @relation(fields: [providerProfileId], references: [id], onDelete: Cascade)
+  createdAt         DateTime        @default(now())
+
+  @@unique([followerUserId, providerProfileId])
+  @@index([providerProfileId])
+}
+
+model Rating {
+  id                String          @id @default(uuid())
+  userId            String
+  user              User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  providerProfileId String
+  providerProfile   ProviderProfile @relation(fields: [providerProfileId], references: [id], onDelete: Cascade)
+  stars             Int             // 1 to 5 stars
+  reviewText        String?
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  @@index([providerProfileId])
+}
+
+model InfoLike {
+  id        String   @id @default(uuid())
+  infoId    String
+  info      Info     @relation(fields: [infoId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([infoId, userId])
+}
+
+model InfoComment {
+  id        String   @id @default(uuid())
+  infoId    String
+  info      Info     @relation(fields: [infoId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  comment   String
+  createdAt DateTime @default(now())
+
+  @@index([infoId])
+}
+
+model InfoShare {
+  id        String   @id @default(uuid())
+  infoId    String
+  info      Info     @relation(fields: [infoId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@index([infoId])
+}
+
+model Friendship {
+  id        String           @id @default(uuid())
+  user1Id   String
+  user1     User             @relation("User1", fields: [user1Id], references: [id], onDelete: Cascade)
+  user2Id   String
+  user2     User             @relation("User2", fields: [user2Id], references: [id], onDelete: Cascade)
+  status    FriendshipStatus @default(PENDING)
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  @@unique([user1Id, user2Id])
+  @@index([user1Id])
+  @@index([user2Id])
+}
+
+model Block {
+  id        String   @id @default(uuid())
+  blockerId String
+  blockedId String
+  createdAt DateTime @default(now())
+
+  @@unique([blockerId, blockedId])
+  @@index([blockerId])
+  @@index([blockedId])
+}
+
+// ==========================================
+// 6. MESSAGING & NOTIFICATIONS
+// ==========================================
+
+enum ConversationType {
+  USER_PROVIDER
+  FRIEND_PRIVATE
+  GROUP
+}
+
+model Conversation {
+  id            String               @id @default(uuid())
+  type          ConversationType
+  contextRoleId String?
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+
+  members       ConversationMember[]
+  messages      Message[]
+}
+
+model ConversationMember {
+  id             String       @id @default(uuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  userId         String
+  roleId         String?
+
+  @@index([conversationId])
+  @@index([userId])
+}
+
+model Message {
+  id             String       @id @default(uuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  senderUserId   String
+  senderRoleId   String?
+  content        String
+  attachments    Json?
+  createdAt      DateTime     @default(now())
+
+  @@index([conversationId])
+}
+
+model Notification {
+  id        String    @id @default(uuid())
+  userId    String
+  eventType String
+  payload   Json
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+  @@index([readAt])
+}
+
+// ==========================================
+// 7. REPORTING, MODERATION & CATEGORIES
+// ==========================================
+
+enum ReportTarget {
+  PROFILE
+  INFO
+  COMMENT
+  CONVERSATION
+}
+
+enum ReportStatus {
+  PENDING
+  REVIEWED
+  RESOLVED
+  DISMISSED
+}
+
+model Report {
+  id             String       @id @default(uuid())
+  reporterUserId String
+  reporter       User         @relation("Reporter", fields: [reporterUserId], references: [id], onDelete: Cascade)
+  targetType     ReportTarget
+  targetId       String
+  reason         String
+  details        String
+  status         ReportStatus @default(PENDING)
+  reviewerId     String?
+  decisionNotes  String?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@index([reporterUserId])
+  @@index([status])
+}
+
+model Category {
+  id       String   @id @default(uuid())
+  code     String   @unique
+  name     Json     // i18n JSON object: { fr: "...", en: "..." }
+  roleCode RoleCode
+
+  @@index([roleCode])
+}
+
+model AuditLog {
+  id          String   @id @default(uuid())
+  adminUserId String
+  admin       User     @relation("AdminUser", fields: [adminUserId], references: [id], onDelete: Cascade)
+  action      String
+  resource    String
+  details     Json
+  ipAddress   String
+  createdAt   DateTime @default(now())
+
+  @@index([adminUserId])
+  @@index([action])
+}
