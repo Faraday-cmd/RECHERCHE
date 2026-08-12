@@ -10,6 +10,7 @@ export const envSchema = z.object({
 
   // Database & Storage
   DATABASE_URL: z.string().url('DATABASE_URL must be a valid PostgreSQL connection string'),
+  DIRECT_URL: z.string().optional().default(''),
   REDIS_HOST: z.string().default('localhost'),
   REDIS_PORT: z.string().transform(Number).default('6379'),
   REDIS_PASSWORD: z.string().optional().default(''),
