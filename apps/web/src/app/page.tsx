@@ -5,9 +5,13 @@ import { Header } from '../components/navigation/Header';
 import { BottomNav, NavTab } from '../components/navigation/BottomNav';
 import { CompactProviderCard, ProviderSummary } from '../components/search/CompactProviderCard';
 import { FilterDrawer, FilterState } from '../components/search/FilterDrawer';
+import { IndividualProviderProfile } from '../components/provider/IndividualProviderProfile';
+import { DeutschInstitutProfile } from '../components/provider/DeutschInstitutProfile';
+import { ProviderDashboard } from '../components/provider/ProviderDashboard';
+import { ConversationList, ConversationItem } from '../components/messaging/ConversationList';
+import { PassProPaymentModal } from '../components/subscription/PassProPaymentModal';
 import { getClientEnv } from '../lib/env.config';
 
-// Fallback Provider Data for Initial Render / Offline Baseline
 const initialProviders: ProviderSummary[] = [
   {
     id: 'prov-1',
@@ -51,11 +55,32 @@ const initialProviders: ProviderSummary[] = [
   },
 ];
 
+const mockConversations: ConversationItem[] = [
+  {
+    id: 'conv-1',
+    type: 'USER_PROVIDER',
+    recipientName: 'Dr. Thomas MBIDA',
+    recipientRole: 'Betreuer & Logement',
+    lastMessage: 'Bonjour ! Les réservations de chambre à Yaoundé sont ouvertes.',
+    updatedAt: '10:42',
+    unreadCount: 1,
+  },
+  {
+    id: 'conv-2',
+    type: 'USER_PROVIDER',
+    recipientName: 'Prof. Karl SCHMIDT',
+    recipientRole: 'Enseignant DSH/TestDaF',
+    lastMessage: 'La prochaine session intensive d\'Allemand B2 débute lundi.',
+    updatedAt: 'Hier',
+  },
+];
+
 export default function HomePage() {
   const [activeTab, setActiveTab] = useState<NavTab>('decouverte');
   const [searchQuery, setSearchQuery] = useState('');
   const [isFilterDrawerOpen, setIsFilterDrawerOpen] = useState(false);
   const [selectedProvider, setSelectedProvider] = useState<ProviderSummary | null>(null);
+  const [isPassModalOpen, setIsPassModalOpen] = useState(false);
 
   const [filters, setFilters] = useState<FilterState>({
     roleFilter: 'ALL',
@@ -64,32 +89,23 @@ export default function HomePage() {
   });
 
   const [providers, setProviders] = useState<ProviderSummary[]>(initialProviders);
-  const [isLoading, setIsLoading] = useState(false);
 
-  // Fetch Providers from Production / Local NestJS API if available
   useEffect(() => {
-    async function fetchProviders() {
-      setIsLoading(true);
+    async function fetchPublicInfo() {
       try {
         const env = getClientEnv();
         const res = await fetch(`${env.apiUrl}/info/public`);
         if (res.ok) {
           const data = await res.json();
-          if (Array.isArray(data) && data.length > 0) {
-            // Map real API results if available
-            console.log('[RECHERCHE API] Public items fetched:', data.length);
-          }
+          console.log('[RECHERCHE LIVE API] Fetched public announcements:', data.length);
         }
       } catch (e) {
-        // Fallback to pre-rendered provider catalog seamlessly
-      } finally {
-        setIsLoading(false);
+        // Safe fallback
       }
     }
-    fetchProviders();
+    fetchPublicInfo();
   }, []);
 
-  // Filter Providers locally based on state
   const filteredProviders = providers.filter((p) => {
     if (filters.roleFilter !== 'ALL' && p.role !== filters.roleFilter) return false;
     if (filters.verifiedOnly && !p.verified) return false;
@@ -110,170 +126,206 @@ export default function HomePage() {
       {/* Mobile Shell Header */}
       <Header />
 
-      {/* Main Content Area */}
+      {/* Main Content Body */}
       <main style={{ maxWidth: '800px', margin: '0 auto', padding: '16px' }}>
-        {/* Search Bar & Filter Trigger */}
-        <section style={{ marginBottom: '16px' }}>
-          <div style={{ display: 'flex', gap: '8px' }}>
-            <div
-              style={{
-                flex: 1,
-                position: 'relative',
-                display: 'flex',
-                alignItems: 'center',
-              }}
-            >
-              <span style={{ position: 'absolute', left: '14px', fontSize: '16px', color: '#94A3B8' }}>
-                🔍
-              </span>
-              <input
-                type="text"
-                placeholder="Rechercher enseignant, betreuer, institut..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                style={{
-                  width: '100%',
-                  minHeight: '46px',
-                  paddingLeft: '42px',
-                  paddingRight: '14px',
-                  borderRadius: '10px',
-                  border: '1px solid #E2E8F0',
-                  backgroundColor: '#FFFFFF',
-                  fontSize: '14px',
-                  color: '#0F172A',
-                  outline: 'none',
-                  boxShadow: '0 1px 2px 0 rgba(15, 23, 42, 0.05)',
-                }}
-              />
-            </div>
-            <button
-              onClick={() => setIsFilterDrawerOpen(true)}
-              style={{
-                minHeight: '46px',
-                padding: '0 14px',
-                backgroundColor: '#F5F3FF',
-                border: '1px solid #DDD6FE',
-                borderRadius: '10px',
-                color: '#5B21B6',
-                fontWeight: 600,
-                fontSize: '13px',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-              }}
-            >
-              <span>⚙️</span>
-              <span>Filtres</span>
-              {filters.roleFilter !== 'ALL' && (
-                <span
-                  style={{
-                    backgroundColor: '#5B21B6',
-                    color: '#FFFFFF',
-                    borderRadius: '9999px',
-                    width: '6px',
-                    height: '6px',
-                  }}
-                />
-              )}
-            </button>
-          </div>
-        </section>
-
-        {/* Quick Category Filter Pills */}
-        <section style={{ marginBottom: '20px', overflowX: 'auto', paddingBottom: '4px' }}>
-          <div style={{ display: 'flex', gap: '8px', width: 'max-content' }}>
-            {[
-              { id: 'ALL', label: 'Tous' },
-              { id: 'LEHRER', label: 'Enseignants' },
-              { id: 'BETREUER', label: 'Betreuer & Logement' },
-              { id: 'VISA_COMPANION', label: 'Compagnons Visa' },
-              { id: 'DEUTSCH_INSTITUT', label: 'Instituts' },
-            ].map((cat) => {
-              const isSelected = filters.roleFilter === cat.id;
-              return (
+        {/* TAB 1: DÉCOUVERTE (FEED & SPATIAL SEARCH) */}
+        {activeTab === 'decouverte' && (
+          <div>
+            {/* Search Input & Filter Trigger */}
+            <section style={{ marginBottom: '16px' }}>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <div style={{ flex: 1, position: 'relative', display: 'flex', alignItems: 'center' }}>
+                  <span style={{ position: 'absolute', left: '14px', fontSize: '16px', color: '#94A3B8' }}>
+                    🔍
+                  </span>
+                  <input
+                    type="text"
+                    placeholder="Rechercher enseignant, betreuer, institut..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    style={{
+                      width: '100%',
+                      minHeight: '46px',
+                      paddingLeft: '42px',
+                      paddingRight: '14px',
+                      borderRadius: '10px',
+                      border: '1px solid #E2E8F0',
+                      backgroundColor: '#FFFFFF',
+                      fontSize: '14px',
+                      color: '#0F172A',
+                      outline: 'none',
+                    }}
+                  />
+                </div>
                 <button
-                  key={cat.id}
-                  onClick={() => setFilters({ ...filters, roleFilter: cat.id })}
+                  onClick={() => setIsFilterDrawerOpen(true)}
                   style={{
-                    minHeight: '36px',
-                    padding: '0 12px',
-                    borderRadius: '9999px',
-                    border: isSelected ? '1px solid #5B21B6' : '1px solid #E2E8F0',
-                    backgroundColor: isSelected ? '#5B21B6' : '#FFFFFF',
-                    color: isSelected ? '#FFFFFF' : '#475569',
-                    fontSize: '12px',
-                    fontWeight: isSelected ? 700 : 500,
+                    minHeight: '46px',
+                    padding: '0 14px',
+                    backgroundColor: '#F5F3FF',
+                    border: '1px solid #DDD6FE',
+                    borderRadius: '10px',
+                    color: '#5B21B6',
+                    fontWeight: 600,
+                    fontSize: '13px',
                     cursor: 'pointer',
-                    whiteSpace: 'nowrap',
-                    boxShadow: isSelected ? '0 2px 4px rgba(91, 33, 182, 0.15)' : 'none',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
                   }}
                 >
-                  {cat.label}
+                  <span>⚙️</span>
+                  <span>Filtres</span>
                 </button>
-              );
-            })}
+              </div>
+            </section>
+
+            {/* Category Filter Pills */}
+            <section style={{ marginBottom: '20px', overflowX: 'auto', paddingBottom: '4px' }}>
+              <div style={{ display: 'flex', gap: '8px', width: 'max-content' }}>
+                {[
+                  { id: 'ALL', label: 'Tous' },
+                  { id: 'LEHRER', label: 'Enseignants' },
+                  { id: 'BETREUER', label: 'Betreuer & Logement' },
+                  { id: 'VISA_COMPANION', label: 'Compagnons Visa' },
+                  { id: 'DEUTSCH_INSTITUT', label: 'Instituts' },
+                ].map((cat) => {
+                  const isSelected = filters.roleFilter === cat.id;
+                  return (
+                    <button
+                      key={cat.id}
+                      onClick={() => setFilters({ ...filters, roleFilter: cat.id })}
+                      style={{
+                        minHeight: '36px',
+                        padding: '0 12px',
+                        borderRadius: '9999px',
+                        border: isSelected ? '1px solid #5B21B6' : '1px solid #E2E8F0',
+                        backgroundColor: isSelected ? '#5B21B6' : '#FFFFFF',
+                        color: isSelected ? '#FFFFFF' : '#475569',
+                        fontSize: '12px',
+                        fontWeight: isSelected ? 700 : 500,
+                        cursor: 'pointer',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      {cat.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </section>
+
+            {/* Title Bar */}
+            <section style={{ marginBottom: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h2 style={{ fontSize: '16px', fontWeight: 700, color: '#0F172A', margin: 0 }}>
+                Prestataires à proximité
+              </h2>
+              <span style={{ fontSize: '12px', color: '#64748B' }}>
+                {filteredProviders.length} résultat(s)
+              </span>
+            </section>
+
+            {/* Compact Cards List */}
+            <section style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {filteredProviders.map((p) => (
+                <CompactProviderCard
+                  key={p.id}
+                  provider={p}
+                  onSelect={(sel) => setSelectedProvider(sel)}
+                />
+              ))}
+            </section>
           </div>
-        </section>
+        )}
 
-        {/* Section Title & Result Count */}
-        <section style={{ marginBottom: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <h2 style={{ fontSize: '16px', fontWeight: 700, color: '#0F172A', margin: 0 }}>
-            Prestataires à proximité
-          </h2>
-          <span style={{ fontSize: '12px', color: '#64748B' }}>
-            {filteredProviders.length} trouvé(s)
-          </span>
-        </section>
+        {/* TAB 2: PRESTATAIRES (CATALOG & PROFILE VIEWS) */}
+        {activeTab === 'prestataires' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            <h2 style={{ fontSize: '20px', fontWeight: 800, color: '#0F172A', margin: 0 }}>
+              Profils des Prestataires Vérifiés
+            </h2>
+            <IndividualProviderProfile
+              id="prov-1"
+              roleCode="BETREUER"
+              roleName="Betreuer & Logement Étudiant"
+              displayName="Dr. Thomas MBIDA"
+              shortBio="Accompagnateur spécialisé pour l'installation, les démarches universitaires et la réservation de logement en Allemagne."
+              fullDescription={`Spécialiste de la mobilité estudiantine germano-camerounaise depuis 2018.\n\nServices proposés:\n- Recherche et réservation de chambre d'étudiant (Wohnheim/WG)\n- Prise en charge à l'aéroport et accompagnement inscription ville (Bürgeramt)\n- Assistance ouverture compte bloqué bancaire.`}
+              city="Douala"
+              distanceKm={2.4}
+              rating={4.9}
+              reviewCount={28}
+              verified={true}
+              onContactClick={() => setActiveTab('messages')}
+            />
 
-        {/* Compact Provider Cards List */}
-        <section style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-          {filteredProviders.length > 0 ? (
-            filteredProviders.map((p) => (
-              <CompactProviderCard
-                key={p.id}
-                provider={p}
-                onSelect={(selected) => setSelectedProvider(selected)}
-              />
-            ))
-          ) : (
-            <div
+            <DeutschInstitutProfile
+              id="prov-2"
+              displayName="Institut Goethe Partner Cameroon"
+              shortBio="Centre d'excellence pour l'apprentissage de la langue allemande et la préparation aux épreuves du Goethe-Zertifikat A1-C1."
+              fullDescription={`L'Institut Goethe Partner Cameroon forme chaque année plus de 800 étudiants aux exigences linguistiques et culturelles allemandes.\n\nNos engagements:\n- Enseignants certifiés et matériel pédagogique moderne\n- Examens blancs hebdomadaires gratuits pour nos abonnés\n- Salles de cours climatisées et médiathèque ouverte 6j/7.`}
+              onContactClick={() => setActiveTab('messages')}
+            />
+          </div>
+        )}
+
+        {/* TAB 3: MESSAGES (ROLE-ISOLATED CHAT INBOX) */}
+        {activeTab === 'messages' && (
+          <div>
+            <ConversationList
+              conversations={mockConversations}
+              onSelect={(id) => alert(`Ouverture de la conversation ${id}`)}
+              activeRoleContextName="Apprenant / Candidat"
+            />
+          </div>
+        )}
+
+        {/* TAB 4: PASS PRO (SUBSCRIPTIONS & USSD PAYMENT GATEWAY) */}
+        {activeTab === 'pass' && (
+          <div>
+            <ProviderDashboard
+              unlockedRoles={[
+                { userRoleId: 'ur-1', roleCode: 'LEHRER', roleName: 'Enseignant DSH/TestDaF', status: 'ACTIVE', isConfigured: true, publicationStatus: 'PUBLISHED' },
+                { userRoleId: 'ur-2', roleCode: 'BETREUER', roleName: 'Betreuer Logement', status: 'ACTIVE', isConfigured: true, publicationStatus: 'CONFIGURED' },
+              ]}
+              activeRole={{ userRoleId: 'ur-1', roleCode: 'LEHRER', roleName: 'Enseignant DSH/TestDaF', status: 'ACTIVE', isConfigured: true, publicationStatus: 'PUBLISHED' }}
+              onSelectRole={(rId) => console.log('Selected role:', rId)}
+            />
+          </div>
+        )}
+
+        {/* TAB 5: PROFIL (USER SETTINGS & PRIVACY LOCATION TOGGLE) */}
+        {activeTab === 'profil' && (
+          <div style={{ backgroundColor: '#FFFFFF', borderRadius: '16px', padding: '20px', border: '1px solid #E2E8F0', boxShadow: '0 2px 8px -2px rgba(91, 33, 182, 0.06)' }}>
+            <h2 style={{ fontSize: '20px', fontWeight: 800, color: '#0F172A', marginBottom: '12px' }}>
+              Mon Profil & Paramètres Privacy
+            </h2>
+            <div style={{ padding: '12px', backgroundColor: '#F5F3FF', borderRadius: '10px', border: '1px solid #DDD6FE', marginBottom: '16px' }}>
+              <div style={{ fontSize: '13px', fontWeight: 700, color: '#5B21B6' }}>Confidentialité de la localisation (PostGIS)</div>
+              <p style={{ fontSize: '12px', color: '#64748B', marginTop: '2px' }}>
+                Votre position géographique exacte n&apos;est jamais partagée publiquement. Seul le rayon approximatif (ex: 2.4 km) est affiché.
+              </p>
+            </div>
+            <button
+              onClick={() => setIsPassModalOpen(true)}
               style={{
-                backgroundColor: '#FFFFFF',
-                borderRadius: '14px',
-                padding: '32px 16px',
-                textAlign: 'center',
-                border: '1px solid #E2E8F0',
+                width: '100%',
+                minHeight: '46px',
+                backgroundColor: '#5B21B6',
+                color: '#FFFFFF',
+                border: 'none',
+                borderRadius: '8px',
+                fontSize: '14px',
+                fontWeight: 700,
+                cursor: 'pointer',
               }}
             >
-              <div style={{ fontSize: '32px', marginBottom: '8px' }}>🔎</div>
-              <h3 style={{ fontSize: '16px', fontWeight: 700, color: '#0F172A', marginBottom: '4px' }}>
-                Aucun prestataire trouvé
-              </h3>
-              <p style={{ fontSize: '13px', color: '#64748B', maxWidth: '300px', margin: '0 auto 16px auto' }}>
-                Essayez d&apos;élargir votre rayon de recherche ou de réinitialiser vos filtres.
-              </p>
-              <button
-                onClick={() => setFilters({ roleFilter: 'ALL', radiusKm: 50, verifiedOnly: false })}
-                style={{
-                  minHeight: '38px',
-                  padding: '0 16px',
-                  backgroundColor: '#F5F3FF',
-                  color: '#5B21B6',
-                  border: '1px solid #DDD6FE',
-                  borderRadius: '8px',
-                  fontSize: '13px',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                }}
-              >
-                Réinitialiser les filtres
-              </button>
-            </div>
-          )}
-        </section>
+              Recharger mon compte Mobile Money (Orange / MTN)
+            </button>
+          </div>
+        )}
 
-        {/* Provider Detail Drawer (Progressive Disclosure Modal) */}
+        {/* Progressive Disclosure Modal Drawer for Provider Card Details */}
         {selectedProvider && (
           <div
             style={{
@@ -307,18 +359,10 @@ export default function HomePage() {
                 boxShadow: '0 -4px 20px rgba(15, 23, 42, 0.12)',
               }}
             >
-              <div
-                style={{
-                  width: '36px',
-                  height: '4px',
-                  backgroundColor: '#CBD5E1',
-                  borderRadius: '9999px',
-                  margin: '0 auto 16px auto',
-                }}
-              />
+              <div style={{ width: '36px', height: '4px', backgroundColor: '#CBD5E1', borderRadius: '9999px', margin: '0 auto 16px auto' }} />
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
                 <div>
-                  <h2 style={{ fontSize: '20px', fontWeight: 700, color: '#0F172A', margin: 0 }}>
+                  <h2 style={{ fontSize: '20px', fontWeight: 800, color: '#0F172A', margin: 0 }}>
                     {selectedProvider.name}
                   </h2>
                   <p style={{ fontSize: '13px', color: '#64748B', marginTop: '2px' }}>
@@ -342,16 +386,7 @@ export default function HomePage() {
               </div>
 
               <div style={{ marginBottom: '20px' }}>
-                <span
-                  style={{
-                    fontSize: '12px',
-                    fontWeight: 600,
-                    backgroundColor: '#F5F3FF',
-                    color: '#5B21B6',
-                    padding: '4px 10px',
-                    borderRadius: '6px',
-                  }}
-                >
+                <span style={{ fontSize: '12px', fontWeight: 700, backgroundColor: '#F5F3FF', color: '#5B21B6', padding: '4px 10px', borderRadius: '6px' }}>
                   {selectedProvider.role}
                 </span>
                 <span style={{ marginLeft: '8px', fontSize: '13px', fontWeight: 600, color: '#D97706' }}>
@@ -359,19 +394,10 @@ export default function HomePage() {
                 </span>
               </div>
 
-              <div style={{ backgroundColor: '#F8FAFC', borderRadius: '10px', padding: '14px', marginBottom: '20px', border: '1px solid #E2E8F0' }}>
-                <h4 style={{ fontSize: '13px', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
-                  À propos du prestataire
-                </h4>
-                <p style={{ fontSize: '13px', color: '#64748B', lineHeight: 1.5 }}>
-                  Prestataire certifié de l&apos;écosystème germano-africain disponible pour accompagnement, cours et conseils d&apos;orientation.
-                </p>
-              </div>
-
               <button
                 onClick={() => {
-                  alert(`Ouverture du chat avec ${selectedProvider.name}`);
                   setSelectedProvider(null);
+                  setActiveTab('messages');
                 }}
                 style={{
                   width: '100%',
@@ -390,6 +416,12 @@ export default function HomePage() {
             </div>
           </div>
         )}
+
+        {/* Global Pass Pro Modal */}
+        <PassProPaymentModal
+          isOpen={isPassModalOpen}
+          onClose={() => setIsPassModalOpen(false)}
+        />
       </main>
 
       {/* Filter Drawer Sheet */}

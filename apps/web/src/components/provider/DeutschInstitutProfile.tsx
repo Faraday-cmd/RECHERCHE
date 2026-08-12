@@ -6,10 +6,10 @@ export interface CampusItem {
   id: string;
   name: string;
   address: string;
-  locationGeom: string;
-  contactPhones: { label: string; number: string }[];
-  openingHours: Record<string, string>;
-  coursesAvailable: { levelCode: string; priceXAF?: number }[];
+  locationGeom?: string;
+  contactPhones?: { label: string; number: string }[];
+  openingHours?: Record<string, string>;
+  coursesAvailable?: { levelCode: string; priceXAF?: number }[];
 }
 
 export interface CoursePriceItem {
@@ -40,15 +40,31 @@ export const DeutschInstitutProfile: React.FC<DeutschInstitutProfileProps> = ({
   fullDescription,
   profilePicUrl,
   coverPicUrl,
-  yearFounded,
-  campuses = [],
+  yearFounded = 2018,
+  campuses = [
+    {
+      id: 'camp-1',
+      name: 'Campus Akwa',
+      address: 'Boulevard de la Liberté, Akwa, Douala',
+      contactPhones: [
+        { label: 'Accueil', number: '+237 699 00 11 22' },
+        { label: 'Inscriptions', number: '+237 677 33 44 55' },
+      ],
+    },
+    {
+      id: 'camp-2',
+      name: 'Campus Bonamoussadi',
+      address: 'Face Carrefour Carrosserie, Douala',
+      contactPhones: [{ label: 'Secrétariat', number: '+237 699 88 77 66' }],
+    },
+  ],
   coursesPrices = [
     { levelCode: 'A1', name: 'Allemand Éléments A1', priceXAF: 50000 },
     { levelCode: 'A2', name: 'Allemand Intermédiaire A2', priceXAF: 60000 },
     { levelCode: 'B1', name: 'Allemand Avancé B1', priceXAF: 75000 },
     { levelCode: 'B2', name: 'Allemand Autonome B2', priceXAF: 90000 },
   ],
-  followerCount = 0,
+  followerCount = 380,
   isFollowing = false,
   onFollowToggle,
   onContactClick,
@@ -65,190 +81,263 @@ export const DeutschInstitutProfile: React.FC<DeutschInstitutProfileProps> = ({
   };
 
   return (
-    <div className="relative max-w-5xl mx-auto bg-white dark:bg-gray-900 rounded-3xl shadow-2xl overflow-hidden border border-gray-100 dark:border-gray-800">
-      {/* Institution Cover Banner */}
-      <div className="h-56 md:h-72 w-full bg-gradient-to-r from-red-700 via-yellow-600 to-amber-700 relative">
+    <article
+      style={{
+        maxWidth: '800px',
+        margin: '0 auto',
+        backgroundColor: '#FFFFFF',
+        borderRadius: '16px',
+        border: '1px solid #E2E8F0',
+        boxShadow: '0 4px 12px -2px rgba(91, 33, 182, 0.08)',
+        overflow: 'hidden',
+      }}
+    >
+      {/* Cover Banner */}
+      <div
+        style={{
+          height: '140px',
+          width: '100%',
+          backgroundColor: '#5B21B6',
+          backgroundImage: 'linear-gradient(135deg, #5B21B6 0%, #4C1D95 100%)',
+          position: 'relative',
+        }}
+      >
         {coverPicUrl && (
-          <img src={coverPicUrl} alt="Cover" className="w-full h-full object-cover opacity-80" />
+          <img src={coverPicUrl} alt="Cover" style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.8 }} />
         )}
-        <div className="absolute top-4 right-4 bg-black/50 backdrop-blur-md px-4 py-1.5 rounded-full text-xs font-semibold text-white tracking-wide">
+        <div
+          style={{
+            position: 'absolute',
+            top: '12px',
+            right: '12px',
+            backgroundColor: '#047857',
+            color: '#FFFFFF',
+            fontSize: '11px',
+            fontWeight: 700,
+            padding: '4px 10px',
+            borderRadius: '9999px',
+          }}
+        >
           DEUTSCH INSTITUT
         </div>
       </div>
 
-      {/* Profile Header Logo & Identity */}
-      <div className="px-6 md:px-8 pb-6 relative">
-        <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between -mt-20 sm:-mt-24 mb-6 gap-4">
-          <div className="relative w-32 h-32 sm:w-40 sm:h-40 rounded-full ring-4 ring-white dark:ring-gray-900 overflow-hidden bg-gray-100 dark:bg-gray-800 shadow-xl">
+      {/* Header Profile Identity */}
+      <div style={{ padding: '0 16px 20px 16px', position: 'relative' }}>
+        <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginTop: '-40px', marginBottom: '12px' }}>
+          <div
+            style={{
+              width: '80px',
+              height: '80px',
+              borderRadius: '16px',
+              border: '3px solid #FFFFFF',
+              backgroundColor: '#ECFDF5',
+              color: '#047857',
+              fontSize: '28px',
+              fontWeight: 800,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              boxShadow: '0 4px 8px rgba(15, 23, 42, 0.1)',
+              overflow: 'hidden',
+            }}
+          >
             {profilePicUrl ? (
-              <img src={profilePicUrl} alt={displayName} className="w-full h-full object-cover" />
+              <img src={profilePicUrl} alt={displayName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
             ) : (
-              <div className="w-full h-full flex items-center justify-center bg-gradient-to-tr from-amber-500 to-red-600 text-white text-4xl font-extrabold">
-                {displayName.charAt(0)}
-              </div>
+              displayName.charAt(0)
             )}
           </div>
 
-          <div className="flex items-center gap-3">
+          <div style={{ display: 'flex', gap: '8px' }}>
             <button
               onClick={handleFollow}
-              className={`px-6 py-3 rounded-2xl font-semibold text-sm transition-all shadow-sm ${
-                following
-                  ? 'bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200'
-                  : 'bg-amber-600 text-white hover:bg-amber-700 shadow-amber-200 dark:shadow-none'
-              }`}
+              style={{
+                minHeight: '44px',
+                padding: '0 14px',
+                borderRadius: '10px',
+                border: following ? '1px solid #E2E8F0' : '1px solid #5B21B6',
+                backgroundColor: following ? '#F8FAFC' : '#5B21B6',
+                color: following ? '#475569' : '#FFFFFF',
+                fontSize: '13px',
+                fontWeight: 600,
+                cursor: 'pointer',
+              }}
             >
-              {following ? 'Abonné' : 'Suivre la structure'} ({count})
+              {following ? 'Abonné' : 'Suivre'} ({count})
             </button>
             <button
               onClick={onContactClick}
-              className="px-6 py-3 rounded-2xl font-semibold text-sm bg-gradient-to-r from-emerald-600 to-teal-600 text-white hover:opacity-95 shadow-md shadow-emerald-200 dark:shadow-none flex items-center gap-2"
+              style={{
+                minHeight: '44px',
+                padding: '0 16px',
+                borderRadius: '10px',
+                border: 'none',
+                backgroundColor: '#7C3AED',
+                color: '#FFFFFF',
+                fontSize: '13px',
+                fontWeight: 700,
+                cursor: 'pointer',
+              }}
             >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-              </svg>
-              Contacter l'Institut
+              Contacter 💬
             </button>
           </div>
         </div>
 
-        <h1 className="text-3xl font-extrabold text-gray-900 dark:text-white tracking-tight">
+        <h1 style={{ fontSize: '22px', fontWeight: 800, color: '#0F172A', margin: 0 }}>
           {displayName}
         </h1>
-        <p className="text-amber-600 dark:text-amber-400 font-medium text-sm mt-1">
-          Centre Spécialisé d'Allemand {yearFounded ? `• Fondé en ${yearFounded}` : ''}
+        <p style={{ fontSize: '13px', fontWeight: 600, color: '#047857', marginTop: '2px' }}>
+          Centre Spécialisé d&apos;Allemand {yearFounded ? `• Fondé en ${yearFounded}` : ''}
         </p>
-        <p className="text-gray-600 dark:text-gray-300 text-sm mt-3 leading-relaxed max-w-3xl">
+        <p style={{ fontSize: '14px', color: '#334155', marginTop: '8px', lineHeight: 1.5 }}>
           {shortBio}
         </p>
 
-        {/* Section Navigation Tabs */}
-        <div className="mt-8 border-b border-gray-100 dark:border-gray-800 flex gap-8">
-          <button
-            onClick={() => setActiveTab('info')}
-            className={`pb-3 text-sm font-semibold transition-colors relative ${
-              activeTab === 'info'
-                ? 'text-amber-600 dark:text-amber-400 border-b-2 border-amber-600'
-                : 'text-gray-500 hover:text-gray-900 dark:hover:text-gray-200'
-            }`}
-          >
-            Informations Publiques
-          </button>
-          <button
-            onClick={() => setActiveTab('courses')}
-            className={`pb-3 text-sm font-semibold transition-colors relative ${
-              activeTab === 'courses'
-                ? 'text-amber-600 dark:text-amber-400 border-b-2 border-amber-600'
-                : 'text-gray-500 hover:text-gray-900 dark:hover:text-gray-200'
-            }`}
-          >
-            Cours & Tarifs
-          </button>
-          <button
-            onClick={() => setActiveTab('campuses')}
-            className={`pb-3 text-sm font-semibold transition-colors relative ${
-              activeTab === 'campuses'
-                ? 'text-amber-600 dark:text-amber-400 border-b-2 border-amber-600'
-                : 'text-gray-500 hover:text-gray-900 dark:hover:text-gray-200'
-            }`}
-          >
-            Nos Campus ({campuses.length})
-          </button>
+        {/* Tab Controls */}
+        <div style={{ display: 'flex', borderBottom: '1px solid #E2E8F0', marginTop: '20px', gap: '16px' }}>
+          {[
+            { id: 'info', label: 'Présentation' },
+            { id: 'courses', label: 'Cours & Tarifs' },
+            { id: 'campuses', label: `Campus (${campuses.length})` },
+          ].map((tab) => {
+            const isTabActive = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id as any)}
+                style={{
+                  minHeight: '44px',
+                  padding: '0 4px',
+                  border: 'none',
+                  borderBottom: isTabActive ? '3px solid #5B21B6' : '3px solid transparent',
+                  backgroundColor: 'transparent',
+                  color: isTabActive ? '#5B21B6' : '#64748B',
+                  fontWeight: isTabActive ? 700 : 500,
+                  fontSize: '14px',
+                  cursor: 'pointer',
+                }}
+              >
+                {tab.label}
+              </button>
+            );
+          })}
         </div>
 
-        {/* Tab Content 1: Public Information */}
-        {activeTab === 'info' && (
-          <div className="py-6 space-y-4">
-            <h3 className="text-lg font-bold text-gray-900 dark:text-white">Présentation de l'établissement</h3>
-            <p className="text-gray-700 dark:text-gray-300 text-sm leading-relaxed whitespace-pre-line">
+        {/* Tab Panels */}
+        <div style={{ paddingTop: '16px' }}>
+          {activeTab === 'info' && (
+            <div style={{ fontSize: '14px', color: '#334155', lineHeight: 1.6, whitespace: 'pre-line' }}>
               {fullDescription}
-            </p>
-          </div>
-        )}
+            </div>
+          )}
 
-        {/* Tab Content 2: Courses & Prices */}
-        {activeTab === 'courses' && (
-          <div className="py-6">
-            <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">Programme des cours et tarifs (XAF)</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {activeTab === 'courses' && (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '10px' }}>
               {coursesPrices.map((course, idx) => (
-                <div key={idx} className="p-4 rounded-2xl bg-gray-50 dark:bg-gray-800/60 border border-gray-100 dark:border-gray-800 flex items-center justify-between">
+                <div
+                  key={idx}
+                  style={{
+                    padding: '12px',
+                    borderRadius: '10px',
+                    backgroundColor: '#F8FAFC',
+                    border: '1px solid #E2E8F0',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'space-between',
+                    minHeight: '80px',
+                  }}
+                >
                   <div>
-                    <span className="inline-block px-2.5 py-0.5 rounded-md bg-amber-100 dark:bg-amber-900/40 text-amber-800 dark:text-amber-300 text-xs font-bold mr-2">
+                    <span
+                      style={{
+                        fontSize: '11px',
+                        fontWeight: 700,
+                        backgroundColor: '#F5F3FF',
+                        color: '#5B21B6',
+                        padding: '2px 6px',
+                        borderRadius: '4px',
+                        display: 'inline-block',
+                        marginBottom: '4px',
+                      }}
+                    >
                       {course.levelCode}
                     </span>
-                    <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{course.name}</span>
+                    <div style={{ fontSize: '13px', fontWeight: 600, color: '#0F172A' }}>{course.name}</div>
                   </div>
-                  <div className="text-sm font-extrabold text-amber-600 dark:text-amber-400">
+                  <div style={{ fontSize: '14px', fontWeight: 800, color: '#5B21B6', marginTop: '8px' }}>
                     {course.priceXAF.toLocaleString()} XAF
                   </div>
                 </div>
               ))}
             </div>
-          </div>
-        )}
+          )}
 
-        {/* Tab Content 3: Horizontal Campuses List */}
-        {activeTab === 'campuses' && (
-          <div className="py-6">
-            <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">Nos implantations et campus</h3>
-
-            {campuses.length === 0 ? (
-              <div className="p-8 text-center bg-gray-50 dark:bg-gray-800/40 rounded-2xl text-gray-500 text-sm">
-                Aucun campus spécifique configuré pour le moment.
-              </div>
-            ) : (
-              <div>
-                {/* Horizontal Campus Selector */}
-                <div className="flex gap-3 overflow-x-auto pb-4 mb-4">
-                  {campuses.map((campus) => (
+          {activeTab === 'campuses' && (
+            <div>
+              <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '12px' }}>
+                {campuses.map((campus) => {
+                  const isSelected = selectedCampus?.id === campus.id;
+                  return (
                     <button
                       key={campus.id}
                       onClick={() => setSelectedCampus(campus)}
-                      className={`px-4 py-2.5 rounded-xl text-sm font-semibold whitespace-nowrap transition-all border ${
-                        selectedCampus?.id === campus.id
-                          ? 'bg-amber-600 text-white border-amber-600 shadow-sm'
-                          : 'bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-700'
-                      }`}
+                      style={{
+                        minHeight: '40px',
+                        padding: '0 12px',
+                        borderRadius: '8px',
+                        border: isSelected ? '2px solid #5B21B6' : '1px solid #E2E8F0',
+                        backgroundColor: isSelected ? '#F5F3FF' : '#FFFFFF',
+                        color: isSelected ? '#5B21B6' : '#334155',
+                        fontSize: '13px',
+                        fontWeight: isSelected ? 700 : 500,
+                        cursor: 'pointer',
+                        whiteSpace: 'nowrap',
+                      }}
                     >
                       📍 {campus.name}
                     </button>
-                  ))}
-                </div>
-
-                {/* Active Campus Details */}
-                {selectedCampus && (
-                  <div className="p-5 rounded-2xl bg-amber-50/50 dark:bg-gray-800/80 border border-amber-100 dark:border-gray-700">
-                    <h4 className="font-bold text-gray-900 dark:text-white text-base mb-1">{selectedCampus.name}</h4>
-                    <p className="text-sm text-gray-600 dark:text-gray-300 mb-3">{selectedCampus.address}</p>
-
-                    <div className="text-xs font-semibold uppercase tracking-wider text-amber-800 dark:text-amber-400 mb-1">Contacts Téléphoniques Campus:</div>
-                    <div className="flex flex-wrap gap-2">
-                      {selectedCampus.contactPhones?.map((phone, i) => (
-                        <span key={i} className="px-2.5 py-1 bg-white dark:bg-gray-900 rounded-lg text-xs font-medium text-gray-800 dark:text-gray-200 border border-gray-200 dark:border-gray-700">
-                          {phone.label}: {phone.number}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
+                  );
+                })}
               </div>
-            )}
-          </div>
-        )}
-      </div>
 
-      {/* Floating Quick Contact Button */}
-      <button
-        onClick={onContactClick}
-        aria-label="Contacter l'institut"
-        className="fixed bottom-6 right-6 z-50 p-4 rounded-full bg-gradient-to-r from-amber-600 to-red-600 text-white shadow-2xl hover:scale-105 active:scale-95 transition-all flex items-center gap-2"
-      >
-        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
-        </svg>
-        <span className="text-sm font-semibold pr-1">Contacter l'Institut</span>
-      </button>
-    </div>
+              {selectedCampus && (
+                <div style={{ padding: '16px', backgroundColor: '#F8FAFC', borderRadius: '12px', border: '1px solid #E2E8F0' }}>
+                  <h4 style={{ fontSize: '15px', fontWeight: 700, color: '#0F172A', margin: 0 }}>
+                    {selectedCampus.name}
+                  </h4>
+                  <p style={{ fontSize: '13px', color: '#64748B', marginTop: '4px', marginBottom: '12px' }}>
+                    {selectedCampus.address}
+                  </p>
+
+                  <div style={{ fontSize: '12px', fontWeight: 700, color: '#334155', marginBottom: '6px' }}>
+                    Contacts du Campus:
+                  </div>
+                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                    {selectedCampus.contactPhones?.map((phone, i) => (
+                      <span
+                        key={i}
+                        style={{
+                          fontSize: '12px',
+                          backgroundColor: '#FFFFFF',
+                          border: '1px solid #CBD5E1',
+                          padding: '4px 8px',
+                          borderRadius: '6px',
+                          color: '#0F172A',
+                          fontWeight: 500,
+                        }}
+                      >
+                        {phone.label}: {phone.number}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    </article>
   );
 };
