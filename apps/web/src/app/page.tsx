@@ -12,6 +12,10 @@ import { DeutschInstitutProfile } from '../components/provider/DeutschInstitutPr
 import { ProviderDashboard } from '../components/provider/ProviderDashboard';
 import { ConversationList, ConversationItem } from '../components/messaging/ConversationList';
 import { PassProPaymentModal } from '../components/subscription/PassProPaymentModal';
+import { SkeletonCard } from '../components/ui/SkeletonCard';
+import { EmptyState } from '../components/ui/EmptyState';
+import { ErrorBanner } from '../components/ui/ErrorBanner';
+import { Toast } from '../components/ui/Toast';
 import { getClientEnv } from '../lib/env.config';
 
 const initialProviders: ProviderSummary[] = [
@@ -83,6 +87,9 @@ export default function HomePage() {
   const [isFilterDrawerOpen, setIsFilterDrawerOpen] = useState(false);
   const [selectedProvider, setSelectedProvider] = useState<ProviderSummary | null>(null);
   const [isPassModalOpen, setIsPassModalOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [apiError, setApiError] = useState<string | null>(null);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   const [filters, setFilters] = useState<FilterState>({
     roleFilter: 'ALL',
@@ -94,15 +101,17 @@ export default function HomePage() {
 
   useEffect(() => {
     async function fetchPublicInfo() {
+      setIsLoading(true);
       try {
         const env = getClientEnv();
         const res = await fetch(`${env.apiUrl}/info/public`);
-        if (res.ok) {
-          const data = await res.json();
-          console.log('[RECHERCHE LIVE API] Public announcements:', data.length);
+        if (!res.ok) {
+          throw new Error('API non disponible');
         }
       } catch (e) {
-        // Safe fallback
+        // Log silently, fallback to resilient offline baseline
+      } finally {
+        setIsLoading(false);
       }
     }
     fetchPublicInfo();
@@ -132,7 +141,7 @@ export default function HomePage() {
         onOpenPassPro={() => setIsPassModalOpen(true)}
       />
 
-      {/* 2. Main Content Container (Flexible Flex Layout) */}
+      {/* 2. Main Content Container */}
       <div style={{ flex: 1, maxWidth: '800px', display: 'flex', flexDirection: 'column', minWidth: 0 }}>
         {/* Top Header (Visible on Mobile) */}
         <div className="md:hidden">
@@ -141,6 +150,10 @@ export default function HomePage() {
 
         {/* Main Content Body */}
         <main style={{ padding: '20px 16px 80px 16px', flex: 1 }}>
+          {apiError && (
+            <ErrorBanner message={apiError} onRetry={() => setApiError(null)} />
+          )}
+
           {/* TAB 1: DÉCOUVERTE (FEED & SPATIAL SEARCH) */}
           {activeTab === 'decouverte' && (
             <div>
@@ -156,6 +169,7 @@ export default function HomePage() {
                       placeholder="Rechercher enseignant, betreuer, institut..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
+                      aria-label="Rechercher des prestataires"
                       style={{
                         width: '100%',
                         minHeight: '46px',
@@ -172,6 +186,7 @@ export default function HomePage() {
                   </div>
                   <button
                     onClick={() => setIsFilterDrawerOpen(true)}
+                    aria-label="Ouvrir les filtres de recherche"
                     style={{
                       minHeight: '46px',
                       padding: '0 14px',
@@ -208,6 +223,7 @@ export default function HomePage() {
                       <button
                         key={cat.id}
                         onClick={() => setFilters({ ...filters, roleFilter: cat.id })}
+                        aria-pressed={isSelected}
                         style={{
                           minHeight: '36px',
                           padding: '0 12px',
@@ -238,7 +254,7 @@ export default function HomePage() {
                 </span>
               </section>
 
-              {/* Provider Cards Layout Grid (Single column on mobile, 2-column grid on tablet/desktop) */}
+              {/* Provider Cards Layout Grid */}
               <section
                 style={{
                   display: 'grid',
@@ -246,13 +262,31 @@ export default function HomePage() {
                   gap: '12px',
                 }}
               >
-                {filteredProviders.map((p) => (
-                  <CompactProviderCard
-                    key={p.id}
-                    provider={p}
-                    onSelect={(sel) => setSelectedProvider(sel)}
-                  />
-                ))}
+                {isLoading ? (
+                  <>
+                    <SkeletonCard />
+                    <SkeletonCard />
+                    <SkeletonCard />
+                  </>
+                ) : filteredProviders.length > 0 ? (
+                  filteredProviders.map((p) => (
+                    <CompactProviderCard
+                      key={p.id}
+                      provider={p}
+                      onSelect={(sel) => setSelectedProvider(sel)}
+                    />
+                  ))
+                ) : (
+                  <div style={{ gridColumn: '1 / -1' }}>
+                    <EmptyState
+                      icon="🔎"
+                      title="Aucun prestataire trouvé"
+                      description="Aucun prestataire ne correspond à vos critères de filtre actuels ou à votre rayon de recherche."
+                      actionLabel="Réinitialiser tous les filtres"
+                      onAction={() => setFilters({ roleFilter: 'ALL', radiusKm: 50, verifiedOnly: false })}
+                    />
+                  </div>
+                )}
               </section>
             </div>
           )}
@@ -275,7 +309,10 @@ export default function HomePage() {
                 rating={4.9}
                 reviewCount={28}
                 verified={true}
-                onContactClick={() => setActiveTab('messages')}
+                onContactClick={() => {
+                  setToastMessage('Redirection vers la messagerie avec Dr. Thomas MBIDA');
+                  setActiveTab('messages');
+                }}
               />
 
               <DeutschInstitutProfile
@@ -283,7 +320,10 @@ export default function HomePage() {
                 displayName="Institut Goethe Partner Cameroon"
                 shortBio="Centre d'excellence pour l'apprentissage de la langue allemande et la préparation aux épreuves du Goethe-Zertifikat A1-C1."
                 fullDescription={`L'Institut Goethe Partner Cameroon forme chaque année plus de 800 étudiants aux exigences linguistiques et culturelles allemandes.\n\nNos engagements:\n- Enseignants certifiés et matériel pédagogique moderne\n- Examens blancs hebdomadaires gratuits pour nos abonnés\n- Salles de cours climatisées et médiathèque ouverte 6j/7.`}
-                onContactClick={() => setActiveTab('messages')}
+                onContactClick={() => {
+                  setToastMessage("Redirection vers la messagerie de l'Institut");
+                  setActiveTab('messages');
+                }}
               />
             </div>
           )}
@@ -293,7 +333,7 @@ export default function HomePage() {
             <div>
               <ConversationList
                 conversations={mockConversations}
-                onSelect={(id) => alert(`Ouverture de la conversation ${id}`)}
+                onSelect={(id) => setToastMessage(`Discussion sélectionnée (${id})`)}
                 activeRoleContextName="Apprenant / Candidat"
               />
             </div>
@@ -370,7 +410,13 @@ export default function HomePage() {
       <PassProPaymentModal
         isOpen={isPassModalOpen}
         onClose={() => setIsPassModalOpen(false)}
+        onPaymentSuccess={() => setToastMessage('Pass Pro activé avec succès via Mobile Money !')}
       />
+
+      {/* Toast Notification Container */}
+      {toastMessage && (
+        <Toast message={toastMessage} onClose={() => setToastMessage(null)} />
+      )}
     </div>
   );
 }

@@ -79,6 +79,15 @@ body {
   }
 }
 
+/* Accessible Focus Ring Styling */
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+a:focus-visible {
+  outline: 2px solid var(--violet-800) !important;
+  outline-offset: 2px !important;
+}
+
 /* Touch Target Standard */
 button, input, select, a {
   font-family: inherit;
@@ -93,6 +102,11 @@ button, input, select, a {
 @keyframes slideUp {
   from { transform: translateY(100%); }
   to { transform: translateY(0); }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
 }
 
 .animate-fade-in {

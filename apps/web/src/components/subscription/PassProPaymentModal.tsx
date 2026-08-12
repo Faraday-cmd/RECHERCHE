@@ -29,12 +29,22 @@ export function PassProPaymentModal({
         setCountdown((prev) => prev - 1);
       }, 1000);
     } else if (countdown === 0 && step === 'USSD_PENDING') {
-      // Simulate success callback upon countdown completion in sandbox mode
       setStep('SUCCESS');
       if (onPaymentSuccess) onPaymentSuccess('TX-9988-OK');
     }
     return () => clearInterval(timer);
   }, [step, countdown, onPaymentSuccess]);
+
+  // Keyboard Escape Key Handler
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isOpen) {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 
@@ -43,7 +53,7 @@ export function PassProPaymentModal({
       alert('Veuillez entrer un numéro de téléphone valide');
       return;
     }
-    setCountdown(10); // 10s fast countdown for demo / testing
+    setCountdown(10);
     setStep('USSD_PENDING');
   };
 
@@ -63,8 +73,10 @@ export function PassProPaymentModal({
         justifyContent: 'center',
         padding: '16px',
       }}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="passpro-modal-title"
     >
-      {/* Backdrop Dimmer */}
       <div
         onClick={onClose}
         style={{
@@ -73,9 +85,9 @@ export function PassProPaymentModal({
           backgroundColor: 'rgba(15, 23, 42, 0.5)',
           backdropFilter: 'blur(3px)',
         }}
+        aria-hidden="true"
       />
 
-      {/* Modal Surface */}
       <div
         className="animate-slide-up"
         style={{
@@ -89,9 +101,9 @@ export function PassProPaymentModal({
           border: '1px solid #E2E8F0',
         }}
       >
-        {/* Modal Close Button */}
         <button
           onClick={onClose}
+          aria-label="Fermer la fenêtre de paiement"
           style={{
             position: 'absolute',
             top: '16px',
@@ -109,12 +121,11 @@ export function PassProPaymentModal({
           ✕
         </button>
 
-        {/* STEP 1: Select Plan & Payment Provider */}
         {step === 'SELECT_PLAN' && (
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
               <span style={{ fontSize: '20px' }}>💳</span>
-              <h2 style={{ fontSize: '18px', fontWeight: 800, color: '#0F172A', margin: 0 }}>
+              <h2 id="passpro-modal-title" style={{ fontSize: '18px', fontWeight: 800, color: '#0F172A', margin: 0 }}>
                 Activer Pass Pro
               </h2>
             </div>
@@ -122,7 +133,6 @@ export function PassProPaymentModal({
               Débloquez la publication d&apos;annonces et la visibilité prioritaire sur Recherche.
             </p>
 
-            {/* Plan Selection */}
             <div style={{ marginBottom: '20px' }}>
               <label style={{ fontSize: '12px', fontWeight: 700, color: '#334155', display: 'block', marginBottom: '8px' }}>
                 CHOISISSEZ VOTRE FORMULE
@@ -158,7 +168,6 @@ export function PassProPaymentModal({
               </div>
             </div>
 
-            {/* Provider Selection */}
             <div style={{ marginBottom: '20px' }}>
               <label style={{ fontSize: '12px', fontWeight: 700, color: '#334155', display: 'block', marginBottom: '8px' }}>
                 MODE DE PAIEMENT MOBILE MONEY
@@ -197,12 +206,12 @@ export function PassProPaymentModal({
               </div>
             </div>
 
-            {/* Phone Number Input */}
             <div style={{ marginBottom: '24px' }}>
-              <label style={{ fontSize: '12px', fontWeight: 700, color: '#334155', display: 'block', marginBottom: '6px' }}>
+              <label htmlFor="phone-input" style={{ fontSize: '12px', fontWeight: 700, color: '#334155', display: 'block', marginBottom: '6px' }}>
                 NUMÉRO DE TÉLÉPHONE DU COMPTE
               </label>
               <input
+                id="phone-input"
                 type="tel"
                 value={phoneNumber}
                 onChange={(e) => setPhoneNumber(e.target.value)}
@@ -232,7 +241,6 @@ export function PassProPaymentModal({
                 fontSize: '15px',
                 fontWeight: 700,
                 cursor: 'pointer',
-                boxShadow: '0 4px 6px -1px rgba(91, 33, 182, 0.2)',
               }}
             >
               Payer {planPrices[plan].price}
@@ -240,7 +248,6 @@ export function PassProPaymentModal({
           </div>
         )}
 
-        {/* STEP 2: USSD Pending State & Countdown */}
         {step === 'USSD_PENDING' && (
           <div style={{ textAlign: 'center', padding: '12px 0' }}>
             <div style={{ fontSize: '36px', marginBottom: '12px' }}>📲</div>
@@ -248,11 +255,9 @@ export function PassProPaymentModal({
               Prompt USSD Envoyé
             </h3>
             <p style={{ fontSize: '13px', color: '#64748B', marginBottom: '16px', lineHeight: 1.5 }}>
-              Validez la demande de paiement de <strong>{planPrices[plan].price}</strong> directement sur votre téléphone ({phoneNumber}) via{' '}
+              Validez la demande de paiement sur votre téléphone ({phoneNumber}) via{' '}
               {provider === 'ORANGE_MONEY' ? 'Orange Money (#150#)' : 'MTN MoMo (*126#)'}.
             </p>
-
-            {/* Countdown Spinner */}
             <div
               style={{
                 display: 'inline-flex',
@@ -271,14 +276,9 @@ export function PassProPaymentModal({
             >
               {countdown}s
             </div>
-
-            <div style={{ fontSize: '12px', color: '#94A3B8' }}>
-              En attente de confirmation du réseau télécom...
-            </div>
           </div>
         )}
 
-        {/* STEP 3: Success Confirmation State */}
         {step === 'SUCCESS' && (
           <div style={{ textAlign: 'center', padding: '12px 0' }}>
             <div style={{ fontSize: '40px', marginBottom: '12px' }}>🎉</div>
@@ -286,7 +286,7 @@ export function PassProPaymentModal({
               Pass Pro Actif !
             </h3>
             <p style={{ fontSize: '14px', color: '#334155', marginBottom: '20px', lineHeight: 1.5 }}>
-              Votre paiement Mobile Money a été confirmé. Vos fonctionnalités professionnelles sont débloquées.
+              Votre paiement Mobile Money a été confirmé. Vos fonctionnalités sont débloquées.
             </p>
             <button
               onClick={onClose}

@@ -25,6 +25,17 @@ export function FilterDrawer({
     setLocalFilters(filters);
   }, [filters]);
 
+  // Keyboard Escape Key Accessibility Handler
+  React.useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isOpen) {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
 
   const roles = [
@@ -45,6 +56,9 @@ export function FilterDrawer({
         flexDirection: 'column',
         justifyContent: 'flex-end',
       }}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="filter-drawer-title"
     >
       {/* Backdrop Dimmer */}
       <div
@@ -55,6 +69,7 @@ export function FilterDrawer({
           backgroundColor: 'rgba(15, 23, 42, 0.4)',
           backdropFilter: 'blur(2px)',
         }}
+        aria-hidden="true"
       />
 
       {/* Drawer Surface */}
@@ -71,23 +86,15 @@ export function FilterDrawer({
           overflowY: 'auto',
         }}
       >
-        {/* Handle Bar */}
-        <div
-          style={{
-            width: '36px',
-            height: '4px',
-            backgroundColor: '#CBD5E1',
-            borderRadius: '9999px',
-            margin: '0 auto 16px auto',
-          }}
-        />
+        <div style={{ width: '36px', height: '4px', backgroundColor: '#CBD5E1', borderRadius: '9999px', margin: '0 auto 16px auto' }} />
 
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
-          <h2 style={{ fontSize: '18px', fontWeight: 700, color: '#0F172A', margin: 0 }}>
+          <h2 id="filter-drawer-title" style={{ fontSize: '18px', fontWeight: 700, color: '#0F172A', margin: 0 }}>
             Filtres de recherche
           </h2>
           <button
             onClick={onClose}
+            aria-label="Fermer les filtres"
             style={{
               backgroundColor: '#F1F5F9',
               border: 'none',
@@ -142,7 +149,7 @@ export function FilterDrawer({
         {/* Filter Section 2: PostGIS Radius Slider */}
         <div style={{ marginBottom: '24px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-            <label style={{ fontSize: '13px', fontWeight: 600, color: '#334155' }}>
+            <label htmlFor="radius-slider" style={{ fontSize: '13px', fontWeight: 600, color: '#334155' }}>
               Rayon de recherche géographique
             </label>
             <span style={{ fontSize: '13px', fontWeight: 700, color: '#5B21B6' }}>
@@ -150,35 +157,13 @@ export function FilterDrawer({
             </span>
           </div>
           <input
+            id="radius-slider"
             type="range"
             min="1"
             max="50"
             value={localFilters.radiusKm}
             onChange={(e) => setLocalFilters({ ...localFilters, radiusKm: parseInt(e.target.value, 10) })}
             style={{ width: '100%', accentColor: '#5B21B6', height: '6px', cursor: 'pointer' }}
-          />
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#64748B', marginTop: '4px' }}>
-            <span>1 km</span>
-            <span>25 km</span>
-            <span>50 km</span>
-          </div>
-        </div>
-
-        {/* Filter Section 3: Verified Only Toggle */}
-        <div style={{ marginBottom: '24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div>
-            <div style={{ fontSize: '14px', fontWeight: 600, color: '#0F172A' }}>
-              Prestataires vérifiés uniquement
-            </div>
-            <div style={{ fontSize: '12px', color: '#64748B' }}>
-              Afficher uniquement les profils contrôlés avec badge
-            </div>
-          </div>
-          <input
-            type="checkbox"
-            checked={localFilters.verifiedOnly}
-            onChange={(e) => setLocalFilters({ ...localFilters, verifiedOnly: e.target.checked })}
-            style={{ width: '22px', height: '22px', accentColor: '#5B21B6', cursor: 'pointer' }}
           />
         </div>
 
@@ -198,7 +183,6 @@ export function FilterDrawer({
             fontSize: '15px',
             fontWeight: 700,
             cursor: 'pointer',
-            boxShadow: '0 4px 6px -1px rgba(91, 33, 182, 0.2)',
           }}
         >
           Appliquer les filtres
