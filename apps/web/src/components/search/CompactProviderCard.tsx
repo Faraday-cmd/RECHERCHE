@@ -23,7 +23,6 @@ export function CompactProviderCard({
   onSelect,
   onContactClick,
 }: CompactProviderCardProps) {
-  // Role Label & Color Badge Mapping
   const roleBadges: Record<
     ProviderSummary['role'],
     { label: string; bg: string; color: string }
@@ -42,8 +41,8 @@ export function CompactProviderCard({
       style={{
         backgroundColor: '#FFFFFF',
         border: '1px solid #E2E8F0',
-        borderRadius: '14px',
-        padding: '12px 14px',
+        borderRadius: '16px',
+        padding: '14px 16px',
         boxShadow: '0 2px 8px -2px rgba(91, 33, 182, 0.06)',
         cursor: 'pointer',
         display: 'flex',
@@ -51,44 +50,58 @@ export function CompactProviderCard({
         justifyContent: 'space-between',
         gap: '12px',
         transition: 'transform 0.15s ease, box-shadow 0.15s ease',
-        minHeight: '88px', // Flexible minimum height target without clipping text
+        minHeight: '92px',
+      }}
+      role="button"
+      tabIndex={0}
+      aria-label={`Voir le profil de ${provider.name}, ${badge.label}`}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          onSelect(provider);
+        }
       }}
     >
       {/* Left Avatar Thumbnail */}
       <div style={{ position: 'relative', flexShrink: 0 }}>
         <div
           style={{
-            width: '48px',
-            height: '48px',
-            borderRadius: '9999px',
+            width: '52px',
+            height: '52px',
+            borderRadius: '12px',
             backgroundColor: '#EDE9FE',
             color: '#5B21B6',
-            fontWeight: 700,
-            fontSize: '18px',
+            fontWeight: 800,
+            fontSize: '20px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             border: '2px solid #DDD6FE',
+            overflow: 'hidden',
           }}
         >
-          {provider.name.charAt(0)}
+          {provider.avatarUrl ? (
+            <img src={provider.avatarUrl} alt={provider.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          ) : (
+            provider.name.charAt(0)
+          )}
         </div>
         {provider.verified && (
           <span
             style={{
               position: 'absolute',
-              bottom: '-2px',
-              right: '-2px',
+              bottom: '-3px',
+              right: '-3px',
               backgroundColor: '#059669',
               color: '#FFFFFF',
               fontSize: '10px',
-              width: '16px',
-              height: '16px',
+              width: '18px',
+              height: '18px',
               borderRadius: '9999px',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               border: '2px solid #FFFFFF',
+              fontWeight: 700,
             }}
             title="Prestataire Vérifié"
           >
@@ -97,25 +110,22 @@ export function CompactProviderCard({
         )}
       </div>
 
-      {/* Center Details Block */}
+      {/* Center Details */}
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-          <h3
-            style={{
-              fontSize: '15px',
-              fontWeight: 700,
-              color: '#0F172A',
-              margin: 0,
-              whiteSpace: 'nowrap',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-            }}
-          >
-            {provider.name}
-          </h3>
-        </div>
+        <h3
+          style={{
+            fontSize: '15px',
+            fontWeight: 700,
+            color: '#0F172A',
+            margin: 0,
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+          }}
+        >
+          {provider.name}
+        </h3>
 
-        {/* Profession Tag Badge */}
         <div style={{ marginTop: '2px' }}>
           <span
             style={{
@@ -132,7 +142,6 @@ export function CompactProviderCard({
           </span>
         </div>
 
-        {/* Meta Info: Distance & Rating */}
         <div
           style={{
             display: 'flex',
@@ -145,14 +154,14 @@ export function CompactProviderCard({
         >
           <span>📍 {provider.city} {provider.distanceKm !== undefined ? `(${provider.distanceKm} km)` : ''}</span>
           {provider.rating && (
-            <span style={{ fontWeight: 600, color: '#D97706' }}>
+            <span style={{ fontWeight: 700, color: '#D97706' }}>
               ★ {provider.rating} {provider.reviewCount ? `(${provider.reviewCount})` : ''}
             </span>
           )}
         </div>
       </div>
 
-      {/* Right Primary CTA Button */}
+      {/* Right Primary Action Button */}
       <div style={{ flexShrink: 0 }}>
         <button
           onClick={(e) => {
@@ -164,19 +173,19 @@ export function CompactProviderCard({
             }
           }}
           style={{
-            minHeight: '36px',
-            padding: '0 12px',
+            minHeight: '38px',
+            padding: '0 14px',
             backgroundColor: '#5B21B6',
             color: '#FFFFFF',
             border: 'none',
             borderRadius: '8px',
             fontSize: '12px',
-            fontWeight: 600,
+            fontWeight: 700,
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
             gap: '4px',
-            boxShadow: '0 1px 2px 0 rgba(91, 33, 182, 0.2)',
+            boxShadow: '0 2px 4px rgba(91, 33, 182, 0.15)',
           }}
         >
           <span>Voir</span>
