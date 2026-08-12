@@ -6,42 +6,46 @@ import { AppModule } from '../src/app.module';
 import express from 'express';
 
 const server = express();
+let isInitialized = false;
 
 export const createServer = async () => {
-  const app = await NestFactory.create(AppModule, new ExpressAdapter(server));
+  if (!isInitialized) {
+    const app = await NestFactory.create(AppModule, new ExpressAdapter(server));
 
-  // Enable Graceful Shutdown Hooks
-  app.enableShutdownHooks();
+    // Enable Graceful Shutdown Hooks
+    app.enableShutdownHooks();
 
-  // Set Global API Prefix
-  app.setGlobalPrefix(process.env.API_PREFIX || 'api/v1');
+    // Set Global API Prefix
+    app.setGlobalPrefix(process.env.API_PREFIX || 'api/v1');
 
-  // CORS Configuration
-  app.enableCors({
-    origin: process.env.CORS_ORIGIN || '*',
-    credentials: true,
-  });
+    // CORS Configuration
+    app.enableCors({
+      origin: process.env.CORS_ORIGIN || '*',
+      credentials: true,
+    });
 
-  // Global DTO Input Validation Pipe
-  app.useGlobalPipes(
-    new ValidationPipe({
-      whitelist: true,
-      forbidNonWhitelisted: true,
-      transform: true,
-    }),
-  );
+    // Global DTO Input Validation Pipe
+    app.useGlobalPipes(
+      new ValidationPipe({
+        whitelist: true,
+        forbidNonWhitelisted: true,
+        transform: true,
+      }),
+    );
 
-  // OpenAPI / Swagger Documentation Setup
-  const config = new DocumentBuilder()
-    .setTitle('RECHERCHE V1 Backend API')
-    .setDescription('Authoritative REST API documentation for Recherche contextual discovery platform.')
-    .setVersion('1.0.0-rc1')
-    .addBearerAuth()
-    .build();
-  const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('api/docs', app, document);
+    // OpenAPI / Swagger Documentation Setup
+    const config = new DocumentBuilder()
+      .setTitle('RECHERCHE V1 Backend API')
+      .setDescription('Authoritative REST API documentation for Recherche contextual discovery platform.')
+      .setVersion('1.0.0-rc1')
+      .addBearerAuth()
+      .build();
+    const document = SwaggerModule.createDocument(app, config);
+    SwaggerModule.setup('api/docs', app, document);
 
-  await app.init();
+    await app.init();
+    isInitialized = true;
+  }
   return server;
 };
 
