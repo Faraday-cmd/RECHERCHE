@@ -4,25 +4,24 @@ import { NavTab } from './BottomNav';
 interface DesktopSidebarProps {
   activeTab: NavTab;
   onTabChange: (tab: NavTab) => void;
-  onOpenPassPro: () => void;
+  onOpenPassPro?: () => void;
 }
 
 export function DesktopSidebar({
   activeTab,
   onTabChange,
-  onOpenPassPro,
 }: DesktopSidebarProps) {
   const items: { id: NavTab; label: string; icon: string }[] = [
     { id: 'decouverte', label: 'Découverte', icon: '🏠' },
     { id: 'prestataires', label: 'Prestataires', icon: '🎓' },
     { id: 'messages', label: 'Messages', icon: '💬' },
-    { id: 'pass', label: 'Pass Pro', icon: '💳' },
+    { id: 'dashboard', label: 'Dashboard', icon: '📊' },
     { id: 'profil', label: 'Mon Profil', icon: '👤' },
   ];
 
   return (
     <aside
-      className="hidden md:flex"
+      className="desktop-sidebar-nav"
       style={{
         width: '240px',
         flexShrink: 0,
@@ -32,8 +31,10 @@ export function DesktopSidebar({
         backgroundColor: '#FFFFFF',
         borderRight: '1px solid #E2E8F0',
         padding: '24px 16px',
+        display: 'flex',
         flexDirection: 'column',
         justifyContent: 'space-between',
+        zIndex: 40,
       }}
     >
       {/* Top Header & Brand */}
@@ -78,37 +79,6 @@ export function DesktopSidebar({
             );
           })}
         </nav>
-      </div>
-
-      {/* Bottom CTA Widget */}
-      <div
-        style={{
-          backgroundColor: '#F5F3FF',
-          borderRadius: '12px',
-          padding: '16px',
-          border: '1px solid #DDD6FE',
-        }}
-      >
-        <div style={{ fontSize: '12px', fontWeight: 700, color: '#5B21B6' }}>PASS PRO ACTIF</div>
-        <p style={{ fontSize: '12px', color: '#64748B', marginTop: '2px', marginBottom: '12px' }}>
-          Formule mensuelle active sur l&apos;écosystème.
-        </p>
-        <button
-          onClick={onOpenPassPro}
-          style={{
-            width: '100%',
-            minHeight: '38px',
-            backgroundColor: '#5B21B6',
-            color: '#FFFFFF',
-            border: 'none',
-            borderRadius: '8px',
-            fontSize: '12px',
-            fontWeight: 700,
-            cursor: 'pointer',
-          }}
-        >
-          Gérer Mobile Money
-        </button>
       </div>
     </aside>
   );

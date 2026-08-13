@@ -3,7 +3,7 @@ import './globals.css';
 
 export const metadata = {
   title: 'Recherche — Plateforme de découverte contextuelle',
-  description: "Recherche connecte les apprenants et candidats avec les instituts d'allemand, enseignants, betreuer et compagnons visa.",
+  description: "Recherche connecte les apprenants et candidats avec les instituts d'allemand, enseignants, betreuer et accompagnateurs visa.",
 };
 
 export default function RootLayout({

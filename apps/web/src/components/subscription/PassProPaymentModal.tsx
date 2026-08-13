@@ -6,6 +6,9 @@ export interface PassProPaymentModalProps {
   isOpen: boolean;
   onClose: () => void;
   onPaymentSuccess?: (txId: string) => void;
+  roleCode?: string;
+  roleName?: string;
+  customPriceXAF?: number;
 }
 
 export type PaymentStep = 'SELECT_PLAN' | 'USSD_PENDING' | 'SUCCESS' | 'FAILURE';
@@ -14,12 +17,23 @@ export function PassProPaymentModal({
   isOpen,
   onClose,
   onPaymentSuccess,
+  roleCode,
+  roleName,
+  customPriceXAF,
 }: PassProPaymentModalProps) {
   const [step, setStep] = useState<PaymentStep>('SELECT_PLAN');
   const [provider, setProvider] = useState<'ORANGE_MONEY' | 'MTN_MOMO'>('ORANGE_MONEY');
   const [phoneNumber, setPhoneNumber] = useState('699000000');
   const [plan, setPlan] = useState<'MONTHLY' | 'ANNUAL'>('MONTHLY');
   const [countdown, setCountdown] = useState(60);
+
+  // Reset modal state when opened
+  useEffect(() => {
+    if (isOpen) {
+      setStep('SELECT_PLAN');
+      setCountdown(60);
+    }
+  }, [isOpen]);
 
   // USSD Countdown Effect
   useEffect(() => {
@@ -57,17 +71,20 @@ export function PassProPaymentModal({
     setStep('USSD_PENDING');
   };
 
-  const planPrices = {
-    MONTHLY: { name: 'Pass Pro Mensuel', price: '5.000 XAF / mois' },
-    ANNUAL: { name: 'Pass Pro Annuel', price: '50.000 XAF / an (-17%)' },
-  };
+  const displayPriceText = customPriceXAF
+    ? `${customPriceXAF.toLocaleString()} FCFA / mois`
+    : plan === 'MONTHLY'
+    ? '5.000 XAF / mois'
+    : '50.000 XAF / an';
+
+  const titleText = roleName ? `Abonnement ${roleName}` : 'Activer Pass Pro';
 
   return (
     <div
       style={{
         position: 'fixed',
         inset: 0,
-        zIndex: 100,
+        zIndex: 2100,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -82,8 +99,8 @@ export function PassProPaymentModal({
         style={{
           position: 'absolute',
           inset: 0,
-          backgroundColor: 'rgba(15, 23, 42, 0.5)',
-          backdropFilter: 'blur(3px)',
+          backgroundColor: 'rgba(15, 23, 42, 0.6)',
+          backdropFilter: 'blur(4px)',
         }}
         aria-hidden="true"
       />
@@ -93,12 +110,13 @@ export function PassProPaymentModal({
         style={{
           position: 'relative',
           backgroundColor: '#FFFFFF',
-          borderRadius: '16px',
+          borderRadius: '20px',
           padding: '24px',
           width: '100%',
           maxWidth: '440px',
-          boxShadow: '0 10px 25px -5px rgba(91, 33, 182, 0.2)',
+          boxShadow: '0 20px 40px -5px rgba(91, 33, 182, 0.25)',
           border: '1px solid #E2E8F0',
+          zIndex: 2200,
         }}
       >
         <button
@@ -123,48 +141,22 @@ export function PassProPaymentModal({
 
         {step === 'SELECT_PLAN' && (
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
               <span style={{ fontSize: '20px' }}>💳</span>
               <h2 id="passpro-modal-title" style={{ fontSize: '18px', fontWeight: 800, color: '#0F172A', margin: 0 }}>
-                Activer Pass Pro
+                {titleText}
               </h2>
             </div>
             <p style={{ fontSize: '13px', color: '#64748B', marginBottom: '20px' }}>
-              Débloquez la publication d&apos;annonces et la visibilité prioritaire sur Recherche.
+              {roleName
+                ? `Paiement d'abonnement dédié pour débloquer votre profil ${roleName}.`
+                : "Débloquez la publication d'annonces et la visibilité prioritaire sur Recherche."}
             </p>
 
-            <div style={{ marginBottom: '20px' }}>
-              <label style={{ fontSize: '12px', fontWeight: 700, color: '#334155', display: 'block', marginBottom: '8px' }}>
-                CHOISISSEZ VOTRE FORMULE
-              </label>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                {(['MONTHLY', 'ANNUAL'] as const).map((pKey) => {
-                  const isSel = plan === pKey;
-                  return (
-                    <button
-                      key={pKey}
-                      onClick={() => setPlan(pKey)}
-                      style={{
-                        minHeight: '48px',
-                        padding: '12px',
-                        borderRadius: '10px',
-                        border: isSel ? '2px solid #5B21B6' : '1px solid #E2E8F0',
-                        backgroundColor: isSel ? '#F5F3FF' : '#FFFFFF',
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        cursor: 'pointer',
-                      }}
-                    >
-                      <span style={{ fontSize: '13px', fontWeight: isSel ? 700 : 500, color: isSel ? '#5B21B6' : '#0F172A' }}>
-                        {planPrices[pKey].name}
-                      </span>
-                      <span style={{ fontSize: '13px', fontWeight: 700, color: '#5B21B6' }}>
-                        {planPrices[pKey].price}
-                      </span>
-                    </button>
-                  );
-                })}
+            <div style={{ marginBottom: '20px', padding: '14px', backgroundColor: '#F5F3FF', borderRadius: '12px', border: '1px solid #DDD6FE' }}>
+              <div style={{ fontSize: '12px', fontWeight: 700, color: '#5B21B6' }}>TARIF ABONNEMENT RÔLE:</div>
+              <div style={{ fontSize: '20px', fontWeight: 800, color: '#0F172A', marginTop: '2px' }}>
+                {displayPriceText}
               </div>
             </div>
 
@@ -174,6 +166,7 @@ export function PassProPaymentModal({
               </label>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
                 <button
+                  type="button"
                   onClick={() => setProvider('ORANGE_MONEY')}
                   style={{
                     minHeight: '44px',
@@ -189,6 +182,7 @@ export function PassProPaymentModal({
                   🟠 Orange Money (#150#)
                 </button>
                 <button
+                  type="button"
                   onClick={() => setProvider('MTN_MOMO')}
                   style={{
                     minHeight: '44px',
@@ -208,7 +202,7 @@ export function PassProPaymentModal({
 
             <div style={{ marginBottom: '24px' }}>
               <label htmlFor="phone-input" style={{ fontSize: '12px', fontWeight: 700, color: '#334155', display: 'block', marginBottom: '6px' }}>
-                NUMÉRO DE TÉLÉPHONE DU COMPTE
+                NUMÉRO DE TÉLÉPHONE MOBILE MONEY
               </label>
               <input
                 id="phone-input"
@@ -230,6 +224,7 @@ export function PassProPaymentModal({
             </div>
 
             <button
+              type="button"
               onClick={handleStartPayment}
               style={{
                 width: '100%',
@@ -239,11 +234,11 @@ export function PassProPaymentModal({
                 border: 'none',
                 borderRadius: '10px',
                 fontSize: '15px',
-                fontWeight: 700,
+                fontWeight: 800,
                 cursor: 'pointer',
               }}
             >
-              Payer {planPrices[plan].price}
+              Payer {displayPriceText}
             </button>
           </div>
         )}
@@ -283,12 +278,15 @@ export function PassProPaymentModal({
           <div style={{ textAlign: 'center', padding: '12px 0' }}>
             <div style={{ fontSize: '40px', marginBottom: '12px' }}>🎉</div>
             <h3 style={{ fontSize: '20px', fontWeight: 800, color: '#059669', marginBottom: '6px' }}>
-              Pass Pro Actif !
+              Paiement Confirmé !
             </h3>
             <p style={{ fontSize: '14px', color: '#334155', marginBottom: '20px', lineHeight: 1.5 }}>
-              Votre paiement Mobile Money a été confirmé. Vos fonctionnalités sont débloquées.
+              {roleName
+                ? `L'abonnement pour ${roleName} est désormais actif.`
+                : 'Votre paiement Mobile Money a été confirmé.'}
             </p>
             <button
+              type="button"
               onClick={onClose}
               style={{
                 width: '100%',
@@ -298,11 +296,11 @@ export function PassProPaymentModal({
                 border: 'none',
                 borderRadius: '10px',
                 fontSize: '15px',
-                fontWeight: 700,
+                fontWeight: 800,
                 cursor: 'pointer',
               }}
             >
-              Fermer et continuer
+              Continuer vers mon Dashboard
             </button>
           </div>
         )}

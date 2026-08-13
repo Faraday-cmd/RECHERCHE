@@ -45,3 +45,6 @@ coverage
 
 # Prisma generated outputs
 prisma/generated
+
+# TypeScript build cache
+*.tsbuildinfo

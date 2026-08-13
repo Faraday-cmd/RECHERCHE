@@ -1,9 +1,12 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 
 export interface FilterState {
   roleFilter: string;
   radiusKm: number;
   verifiedOnly: boolean;
+  country?: string;
+  city?: string;
+  quarter?: string;
 }
 
 interface FilterDrawerProps {
@@ -13,20 +16,81 @@ interface FilterDrawerProps {
   onApplyFilters: (newFilters: FilterState) => void;
 }
 
+const COUNTRIES = [
+  { code: 'CM', name: 'Cameroun', flag: '🇨🇲' },
+  { code: 'DE', name: 'Allemagne', flag: '🇩🇪' },
+  { code: 'FR', name: 'France', flag: '🇫🇷' },
+  { code: 'GA', name: 'Gabon', flag: '🇬🇦' },
+  { code: 'CI', name: 'Côte d\'Ivoire', flag: '🇨🇮' },
+];
+
+const CITIES_BY_COUNTRY: Record<string, string[]> = {
+  Cameroun: ['Douala', 'Yaoundé', 'Bafoussam', 'Garoua', 'Bamenda', 'Dschang', 'Maroua', 'Ngaoundéré', 'Buea'],
+  Allemagne: ['Berlin', 'München', 'Frankfurt', 'Hamburg', 'Köln', 'Stuttgart', 'Leipzig'],
+  France: ['Paris', 'Lyon', 'Marseille', 'Toulouse', 'Bordeaux'],
+  Gabon: ['Libreville', 'Port-Gentil'],
+  "Côte d'Ivoire": ['Abidjan', 'Yamoussoukro'],
+};
+
+const QUARTERS_BY_CITY: Record<string, string[]> = {
+  Douala: ['Akwa', 'Bonanjo', 'Bonapriso', 'Deido', 'Makepe', 'Logbessou', 'Beedi', 'Ndogpassi', 'Bonamoussadi', 'Kotto', 'Bépanda', 'PK10/PK12/PK14', 'Yassa', 'Ndokoti'],
+  Yaoundé: ['Bastos', 'Ngoa-Ekelle', 'Biyem-Assi', 'Mvan', 'Odza', 'Essos', 'Mendong', 'Omnisports', 'Melen', 'Nsam', 'Emana', 'Jouvence', 'Nkolbisson'],
+  Bafoussam: ['Tamdja', 'Djeleng', 'Kouogouo', 'Haoussa', 'Bamendzi', 'Sokourjou'],
+  Garoua: ['Roumde Adjia', 'Poumpoumre', 'Grand Marché', 'Lainde', 'Yelwa'],
+  Bamenda: ['Commercial Avenue', 'Up Station', 'Nkwen', 'Mankon', 'Bambili'],
+  Dschang: ['Campus', 'Foroke', 'Keleng', 'Sinotex', 'Bafou'],
+  Berlin: ['Mitte', 'Kreuzberg', 'Neukölln', 'Charlottenburg', 'Prenzlauer Berg'],
+  München: ['Altstadt', 'Schwabing', 'Maxvorstadt', 'Sendling'],
+  Paris: ['1er Arrondissement', 'Le Marais', 'Montmartre', 'Latin Quarter'],
+};
+
 export function FilterDrawer({
   isOpen,
   onClose,
   filters,
   onApplyFilters,
 }: FilterDrawerProps) {
-  const [localFilters, setLocalFilters] = React.useState<FilterState>(filters);
+  const [localFilters, setLocalFilters] = useState<FilterState>({
+    ...filters,
+    country: filters.country || 'Cameroun',
+    city: filters.city || 'Douala',
+    quarter: filters.quarter || 'ALL',
+  });
 
-  React.useEffect(() => {
-    setLocalFilters(filters);
+  const [isCustomCityActive, setIsCustomCityActive] = useState(false);
+  const [customCityInput, setCustomCityInput] = useState('');
+  const [isCustomQuarterActive, setIsCustomQuarterActive] = useState(false);
+  const [customQuarterInput, setCustomQuarterInput] = useState('');
+
+  useEffect(() => {
+    setLocalFilters({
+      ...filters,
+      country: filters.country || 'Cameroun',
+      city: filters.city || 'Douala',
+      quarter: filters.quarter || 'ALL',
+    });
   }, [filters]);
 
+  // Automatic country localization detection
+  useEffect(() => {
+    if (!filters.country) {
+      try {
+        const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+        if (timeZone.includes('Berlin') || timeZone.includes('Europe/Berlin')) {
+          setLocalFilters((prev) => ({ ...prev, country: 'Allemagne' }));
+        } else if (timeZone.includes('Paris') || timeZone.includes('Europe/Paris')) {
+          setLocalFilters((prev) => ({ ...prev, country: 'France' }));
+        } else {
+          setLocalFilters((prev) => ({ ...prev, country: 'Cameroun' }));
+        }
+      } catch (e) {
+        setLocalFilters((prev) => ({ ...prev, country: 'Cameroun' }));
+      }
+    }
+  }, [filters.country]);
+
   // Keyboard Escape Key Accessibility Handler
-  React.useEffect(() => {
+  useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && isOpen) {
         onClose();
@@ -38,13 +102,20 @@ export function FilterDrawer({
 
   if (!isOpen) return null;
 
+  const currentCountry = localFilters.country || 'Cameroun';
+  const availableCities = CITIES_BY_COUNTRY[currentCountry] || CITIES_BY_COUNTRY['Cameroun'];
+  const currentCity = localFilters.city || 'Douala';
+  const availableQuarters = QUARTERS_BY_CITY[currentCity] || [];
+
   const roles = [
     { id: 'ALL', label: 'Tous les prestataires' },
     { id: 'LEHRER', label: 'Enseignants d\'Allemand (DSH / TestDaF)' },
-    { id: 'BETREUER', label: 'Betreuer & Logement étudiant' },
-    { id: 'VISA_COMPANION', label: 'Compagnons Demande de Visa' },
+    { id: 'BETREUER', label: 'Betreuer' },
+    { id: 'VISA_COMPANION', label: 'Accompagnateurs Demande de Visa' },
     { id: 'DEUTSCH_INSTITUT', label: 'Instituts d\'Allemand' },
   ];
+
+  const currentFlag = COUNTRIES.find((c) => c.name === currentCountry)?.flag || '🇨🇲';
 
   return (
     <div
@@ -82,15 +153,15 @@ export function FilterDrawer({
           borderTopRightRadius: '20px',
           padding: '20px 20px 32px 20px',
           boxShadow: '0 -4px 20px rgba(15, 23, 42, 0.12)',
-          maxHeight: '85vh',
+          maxHeight: '88vh',
           overflowY: 'auto',
         }}
       >
         <div style={{ width: '36px', height: '4px', backgroundColor: '#CBD5E1', borderRadius: '9999px', margin: '0 auto 16px auto' }} />
 
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
-          <h2 id="filter-drawer-title" style={{ fontSize: '18px', fontWeight: 700, color: '#0F172A', margin: 0 }}>
-            Filtres de recherche
+          <h2 id="filter-drawer-title" style={{ fontSize: '18px', fontWeight: 800, color: '#0F172A', margin: 0 }}>
+            Filtres & Localisation de Recherche
           </h2>
           <button
             onClick={onClose}
@@ -110,10 +181,269 @@ export function FilterDrawer({
           </button>
         </div>
 
-        {/* Filter Section 1: Role Category */}
+        {/* AUTOMATIC COUNTRY LOCALIZATION BANNER */}
+        <div
+          style={{
+            padding: '12px 14px',
+            backgroundColor: '#F5F3FF',
+            borderRadius: '14px',
+            border: '1px solid #DDD6FE',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            marginBottom: '20px',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <span style={{ fontSize: '24px' }}>{currentFlag}</span>
+            <div>
+              <div style={{ fontSize: '11px', fontWeight: 800, color: '#5B21B6', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                Localisation Détectée Automatiquement
+              </div>
+              <div style={{ fontSize: '14px', fontWeight: 800, color: '#0F172A' }}>
+                {currentCountry} <span style={{ fontSize: '11px', color: '#059669', fontWeight: 700 }}>(GPS / IP Actif)</span>
+              </div>
+            </div>
+          </div>
+          <select
+            value={currentCountry}
+            onChange={(e) => {
+              const newCountry = e.target.value;
+              const newCities = CITIES_BY_COUNTRY[newCountry] || [];
+              setLocalFilters({
+                ...localFilters,
+                country: newCountry,
+                city: newCities[0] || 'ALL',
+                quarter: 'ALL',
+              });
+            }}
+            style={{
+              padding: '6px 10px',
+              borderRadius: '8px',
+              border: '1px solid #CBD5E1',
+              fontSize: '12px',
+              fontWeight: 700,
+              color: '#475569',
+              backgroundColor: '#FFFFFF',
+              cursor: 'pointer',
+            }}
+          >
+            {COUNTRIES.map((c) => (
+              <option key={c.code} value={c.name}>
+                {c.flag} {c.name}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* LOCATION SECTION: CITY SELECTION */}
+        <div style={{ marginBottom: '20px' }}>
+          <label style={{ fontSize: '13px', fontWeight: 700, color: '#0F172A', display: 'block', marginBottom: '8px' }}>
+            🏙️ 1. Dans quelle ville souhaitez-vous rechercher ?
+          </label>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(110px, 1fr))', gap: '8px' }}>
+            <button
+              type="button"
+              onClick={() => {
+                setIsCustomCityActive(false);
+                setLocalFilters({ ...localFilters, city: 'ALL', quarter: 'ALL' });
+              }}
+              style={{
+                minHeight: '38px',
+                padding: '0 10px',
+                borderRadius: '10px',
+                border: !isCustomCityActive && localFilters.city === 'ALL' ? '2px solid #5B21B6' : '1px solid #E2E8F0',
+                backgroundColor: !isCustomCityActive && localFilters.city === 'ALL' ? '#F5F3FF' : '#FFFFFF',
+                color: !isCustomCityActive && localFilters.city === 'ALL' ? '#5B21B6' : '#475569',
+                fontWeight: !isCustomCityActive && localFilters.city === 'ALL' ? 800 : 600,
+                fontSize: '12px',
+                cursor: 'pointer',
+              }}
+            >
+              Toutes les villes
+            </button>
+            {availableCities.map((cityName) => {
+              const isSelected = !isCustomCityActive && localFilters.city === cityName;
+              return (
+                <button
+                  key={cityName}
+                  type="button"
+                  onClick={() => {
+                    setIsCustomCityActive(false);
+                    setLocalFilters({ ...localFilters, city: cityName, quarter: 'ALL' });
+                  }}
+                  style={{
+                    minHeight: '38px',
+                    padding: '0 10px',
+                    borderRadius: '10px',
+                    border: isSelected ? '2px solid #5B21B6' : '1px solid #E2E8F0',
+                    backgroundColor: isSelected ? '#F5F3FF' : '#FFFFFF',
+                    color: isSelected ? '#5B21B6' : '#0F172A',
+                    fontWeight: isSelected ? 800 : 600,
+                    fontSize: '12px',
+                    cursor: 'pointer',
+                  }}
+                >
+                  📍 {cityName}
+                </button>
+              );
+            })}
+
+            <button
+              type="button"
+              onClick={() => setIsCustomCityActive(!isCustomCityActive)}
+              style={{
+                minHeight: '38px',
+                padding: '0 10px',
+                borderRadius: '10px',
+                border: isCustomCityActive ? '2px solid #5B21B6' : '1px dashed #5B21B6',
+                backgroundColor: isCustomCityActive ? '#F5F3FF' : '#FFFFFF',
+                color: '#5B21B6',
+                fontWeight: 700,
+                fontSize: '12px',
+                cursor: 'pointer',
+              }}
+            >
+              + Autres villes
+            </button>
+          </div>
+
+          {isCustomCityActive && (
+            <div style={{ marginTop: '8px' }}>
+              <input
+                type="text"
+                value={customCityInput}
+                onChange={(e) => {
+                  setCustomCityInput(e.target.value);
+                  setLocalFilters({ ...localFilters, city: e.target.value.trim() || 'ALL', quarter: 'ALL' });
+                }}
+                placeholder="Saisissez le nom de votre ville..."
+                style={{
+                  width: '100%',
+                  minHeight: '42px',
+                  padding: '0 14px',
+                  borderRadius: '10px',
+                  border: '1px solid #5B21B6',
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  outline: 'none',
+                }}
+              />
+            </div>
+          )}
+        </div>
+
+        {/* LOCATION SECTION: QUARTER SELECTION */}
         <div style={{ marginBottom: '24px' }}>
-          <label style={{ fontSize: '13px', fontWeight: 600, color: '#334155', display: 'block', marginBottom: '8px' }}>
-            Catégorie de prestataire
+          <label style={{ fontSize: '13px', fontWeight: 700, color: '#0F172A', display: 'block', marginBottom: '8px' }}>
+            🏡 2. Dans quel quartier / secteur souhaitez-vous rechercher ?
+          </label>
+
+          {localFilters.city && localFilters.city !== 'ALL' ? (
+            <div>
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '10px' }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsCustomQuarterActive(false);
+                    setLocalFilters({ ...localFilters, quarter: 'ALL' });
+                  }}
+                  style={{
+                    minHeight: '36px',
+                    padding: '0 12px',
+                    borderRadius: '10px',
+                    border: !isCustomQuarterActive && localFilters.quarter === 'ALL' ? '2px solid #5B21B6' : '1px solid #E2E8F0',
+                    backgroundColor: !isCustomQuarterActive && localFilters.quarter === 'ALL' ? '#F5F3FF' : '#FFFFFF',
+                    color: !isCustomQuarterActive && localFilters.quarter === 'ALL' ? '#5B21B6' : '#475569',
+                    fontWeight: !isCustomQuarterActive && localFilters.quarter === 'ALL' ? 800 : 600,
+                    fontSize: '12px',
+                    cursor: 'pointer',
+                  }}
+                >
+                  Tous les quartiers de {localFilters.city}
+                </button>
+
+                {availableQuarters.map((qtr) => {
+                  const isSelected = !isCustomQuarterActive && localFilters.quarter === qtr;
+                  return (
+                    <button
+                      key={qtr}
+                      type="button"
+                      onClick={() => {
+                        setIsCustomQuarterActive(false);
+                        setLocalFilters({ ...localFilters, quarter: qtr });
+                      }}
+                      style={{
+                        minHeight: '36px',
+                        padding: '0 12px',
+                        borderRadius: '10px',
+                        border: isSelected ? '2px solid #5B21B6' : '1px solid #E2E8F0',
+                        backgroundColor: isSelected ? '#F5F3FF' : '#FFFFFF',
+                        color: isSelected ? '#5B21B6' : '#0F172A',
+                        fontWeight: isSelected ? 800 : 500,
+                        fontSize: '12px',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      {qtr}
+                    </button>
+                  );
+                })}
+
+                <button
+                  type="button"
+                  onClick={() => setIsCustomQuarterActive(!isCustomQuarterActive)}
+                  style={{
+                    minHeight: '36px',
+                    padding: '0 12px',
+                    borderRadius: '10px',
+                    border: isCustomQuarterActive ? '2px solid #5B21B6' : '1px dashed #5B21B6',
+                    backgroundColor: isCustomQuarterActive ? '#F5F3FF' : '#FFFFFF',
+                    color: '#5B21B6',
+                    fontWeight: 700,
+                    fontSize: '12px',
+                    cursor: 'pointer',
+                  }}
+                >
+                  + Autre quartier
+                </button>
+              </div>
+
+              {isCustomQuarterActive && (
+                <div style={{ marginTop: '8px' }}>
+                  <input
+                    type="text"
+                    value={customQuarterInput}
+                    onChange={(e) => {
+                      setCustomQuarterInput(e.target.value);
+                      setLocalFilters({ ...localFilters, quarter: e.target.value.trim() || 'ALL' });
+                    }}
+                    placeholder={`Saisissez le nom du quartier à ${localFilters.city}...`}
+                    style={{
+                      width: '100%',
+                      minHeight: '42px',
+                      padding: '0 14px',
+                      borderRadius: '10px',
+                      border: '1px solid #5B21B6',
+                      fontSize: '13px',
+                      fontWeight: 600,
+                      outline: 'none',
+                    }}
+                  />
+                </div>
+              )}
+            </div>
+          ) : (
+            <p style={{ fontSize: '12px', color: '#64748B', fontStyle: 'italic', margin: 0 }}>
+              Sélectionnez d&apos;abord une ville ci-dessus pour choisir un quartier spécifique.
+            </p>
+          )}
+        </div>
+
+        {/* Filter Section 3: Role Category */}
+        <div style={{ marginBottom: '24px' }}>
+          <label style={{ fontSize: '13px', fontWeight: 700, color: '#0F172A', display: 'block', marginBottom: '8px' }}>
+            🏷️ 3. Catégorie de prestataire
           </label>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             {roles.map((r) => {
@@ -121,6 +451,7 @@ export function FilterDrawer({
               return (
                 <button
                   key={r.id}
+                  type="button"
                   onClick={() => setLocalFilters({ ...localFilters, roleFilter: r.id })}
                   style={{
                     minHeight: '44px',
@@ -146,13 +477,13 @@ export function FilterDrawer({
           </div>
         </div>
 
-        {/* Filter Section 2: PostGIS Radius Slider */}
+        {/* Filter Section 4: Radius Slider */}
         <div style={{ marginBottom: '24px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-            <label htmlFor="radius-slider" style={{ fontSize: '13px', fontWeight: 600, color: '#334155' }}>
-              Rayon de recherche géographique
+            <label htmlFor="radius-slider" style={{ fontSize: '13px', fontWeight: 700, color: '#0F172A' }}>
+              🎯 4. Rayon de recherche géographique
             </label>
-            <span style={{ fontSize: '13px', fontWeight: 700, color: '#5B21B6' }}>
+            <span style={{ fontSize: '13px', fontWeight: 800, color: '#5B21B6' }}>
               {localFilters.radiusKm} km
             </span>
           </div>
@@ -169,25 +500,28 @@ export function FilterDrawer({
 
         {/* Apply Action Button */}
         <button
+          type="button"
           onClick={() => {
             onApplyFilters(localFilters);
             onClose();
           }}
           style={{
             width: '100%',
-            minHeight: '48px',
+            minHeight: '50px',
             backgroundColor: '#5B21B6',
             color: '#FFFFFF',
             border: 'none',
-            borderRadius: '10px',
+            borderRadius: '12px',
             fontSize: '15px',
-            fontWeight: 700,
+            fontWeight: 800,
             cursor: 'pointer',
+            boxShadow: '0 4px 14px rgba(91, 33, 182, 0.25)',
           }}
         >
-          Appliquer les filtres
+          🔍 Rechercher dans cette zone
         </button>
       </div>
     </div>
   );
 }
+

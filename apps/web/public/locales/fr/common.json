@@ -12,7 +12,7 @@
   "roles": {
     "lehrer": "Enseignant (Lehrer)",
     "betreuer": "Accompagnateur (Betreuer)",
-    "visa_companion": "Visa Compagnon",
+    "visa_companion": "Accompagnateur Visa",
     "deutsch_institut": "Institut d'Allemand"
   },
   "search": {

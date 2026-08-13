@@ -1,6 +1,11 @@
 import React, { useState } from 'react';
 
-export function Header() {
+export interface HeaderProps {
+  currentCity?: string;
+  onLocationClick?: () => void;
+}
+
+export function Header({ currentCity, onLocationClick }: HeaderProps = {}) {
   const [locale, setLocale] = useState<'fr' | 'en'>('fr');
 
   return (
@@ -14,65 +19,35 @@ export function Header() {
         padding: '12px 16px',
         display: 'flex',
         alignItems: 'center',
-        justifyContent: 'space-between',
+        justifyContent: 'flex-end',
         boxShadow: '0 1px 2px 0 rgba(15, 23, 42, 0.04)',
       }}
     >
-      {/* Brand Identity */}
-      <div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span
-            style={{
-              fontSize: '20px',
-              fontWeight: 800,
-              color: '#5B21B6',
-              letterSpacing: '-0.5px',
-            }}
-          >
-            RECHERCHE
-          </span>
-          <span
-            style={{
-              fontSize: '11px',
-              fontWeight: 600,
-              backgroundColor: '#F5F3FF',
-              color: '#5B21B6',
-              padding: '2px 6px',
-              borderRadius: '9999px',
-              border: '1px solid #DDD6FE',
-            }}
-          >
-            V1
-          </span>
-        </div>
-        <div style={{ fontSize: '11px', color: '#64748B', fontStyle: 'italic', marginTop: '1px' }}>
-          « L&apos;information est la clé »
-        </div>
-      </div>
-
       {/* Right Controls: Location Pill & Language Switcher */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-        {/* City Indicator */}
+        {/* City Indicator Badge (Display only - location modified uniquely in Mon Profil) */}
         <div
           style={{
             display: 'flex',
             alignItems: 'center',
             gap: '4px',
             fontSize: '12px',
-            fontWeight: 500,
-            color: '#334155',
-            backgroundColor: '#F8FAFC',
-            border: '1px solid #E2E8F0',
-            padding: '4px 8px',
+            fontWeight: 700,
+            color: '#5B21B6',
+            backgroundColor: '#F5F3FF',
+            border: '1px solid #DDD6FE',
+            padding: '5px 12px',
             borderRadius: '9999px',
+            userSelect: 'none',
           }}
         >
           <span>📍</span>
-          <span>Douala</span>
+          <span>{currentCity || 'Douala'}</span>
         </div>
 
         {/* Language Switcher Button */}
         <button
+          type="button"
           onClick={() => setLocale(locale === 'fr' ? 'en' : 'fr')}
           style={{
             minHeight: '36px',
