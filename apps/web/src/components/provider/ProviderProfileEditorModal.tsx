@@ -78,8 +78,6 @@ export const ProviderProfileEditorModal: React.FC<ProviderProfileEditorModalProp
   const isFormValid = Boolean(
     displayName.trim().length >= 2 &&
     bio.trim().length >= 5 &&
-    effectiveCity.length >= 2 &&
-    effectiveQuarter.length >= 2 &&
     phoneNumbers.some((p) => p.number.trim().length >= 6)
   );
 
@@ -553,24 +551,7 @@ export const ProviderProfileEditorModal: React.FC<ProviderProfileEditorModalProp
                 </div>
               </div>
 
-              {/* CONTACT DATA */}
-              <div>
-                <label style={{ fontSize: '13px', fontWeight: 800, color: '#334155', display: 'block', marginBottom: '6px' }}>
-                  Ville principale <span style={{ color: '#DC2626' }}>*</span>
-                </label>
-                <select
-                  value={city}
-                  onChange={(e) => setCity(e.target.value)}
-                  style={{ width: '100%', minHeight: '44px', padding: '0 14px', borderRadius: '10px', border: '1px solid #CBD5E1', fontSize: '14px', fontWeight: 700 }}
-                >
-                  <option value="Douala">Douala</option>
-                  <option value="Yaoundé">Yaoundé</option>
-                  <option value="Bafoussam">Bafoussam</option>
-                  <option value="Garoua">Garoua</option>
-                  <option value="Bamenda">Bamenda</option>
-                  <option value="Dschang">Dschang</option>
-                </select>
-              </div>
+
 
               <div>
                 <label style={{ fontSize: '13px', fontWeight: 800, color: '#334155', display: 'block', marginBottom: '6px' }}>
@@ -1203,7 +1184,7 @@ export const ProviderProfileEditorModal: React.FC<ProviderProfileEditorModalProp
                 boxShadow: isFormValid ? '0 4px 14px rgba(91, 33, 182, 0.3)' : 'none',
                 transition: 'all 0.2s ease',
               }}
-              title={!isFormValid ? 'Veuillez remplir les champs obligatoires: Nom public, Bio, Ville, Quartier et Téléphone.' : ''}
+              title={!isFormValid ? 'Veuillez remplir les champs obligatoires: Nom public, Bio et Téléphone.' : ''}
             >
               Enregistrer le profil →
             </button>

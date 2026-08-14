@@ -16,8 +16,14 @@ interface PublicationCardProps {
     providerVerified?: boolean;
     providerPicUrl?: string;
     viewCount?: number;
+    likeCount?: number;
   };
   showViewCountInDashboard?: boolean;
+  isFollowed?: boolean;
+  onFollowClick?: () => void;
+  isLiked?: boolean;
+  likeCount?: number;
+  onLikeClick?: () => void;
   onContactClick?: () => void;
   onProviderNameClick?: () => void;
   onOpenFullscreenImage?: (imageUrl: string) => void;
@@ -26,6 +32,11 @@ interface PublicationCardProps {
 export const PublicationCard: React.FC<PublicationCardProps> = ({
   publication,
   showViewCountInDashboard = false,
+  isFollowed = false,
+  onFollowClick,
+  isLiked = false,
+  likeCount,
+  onLikeClick,
   onContactClick,
   onProviderNameClick,
   onOpenFullscreenImage,
@@ -493,7 +504,55 @@ export const PublicationCard: React.FC<PublicationCardProps> = ({
             📍 {publication.providerCity || 'Douala'}
           </span>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            {/* LIKE BUTTON FOR PUBLICATION */}
+            {onLikeClick ? (
+              <button
+                type="button"
+                onClick={onLikeClick}
+                style={{
+                  minHeight: '36px',
+                  minWidth: '44px',
+                  padding: '0 12px',
+                  borderRadius: '9999px',
+                  border: isLiked ? '1px solid #FCA5A5' : '1px solid #E2E8F0',
+                  backgroundColor: isLiked ? '#FEF2F2' : '#F8FAFC',
+                  color: isLiked ? '#DC2626' : '#64748B',
+                  fontSize: '12px',
+                  fontWeight: 800,
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '5px',
+                  transition: 'all 0.15s ease',
+                }}
+                title={isLiked ? 'Je n\'aime plus cette publication' : 'J\'aime cette publication'}
+              >
+                <span style={{ fontSize: '14px', transition: 'transform 0.2s ease', transform: isLiked ? 'scale(1.15)' : 'scale(1)' }}>
+                  {isLiked ? '❤️' : '🤍'}
+                </span>
+                <span>{likeCount ?? publication.likeCount ?? 12}</span>
+              </button>
+            ) : (
+              <span
+                style={{
+                  fontSize: '12px',
+                  fontWeight: 700,
+                  color: '#DC2626',
+                  backgroundColor: '#FEF2F2',
+                  padding: '4px 10px',
+                  borderRadius: '9999px',
+                  border: '1px solid #FCA5A5',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                }}
+              >
+                <span>❤️</span>
+                <span>{likeCount ?? publication.likeCount ?? 12}</span>
+              </span>
+            )}
+
             {/* VIEWS COUNTER (UNIQUELY VISIBLE IN PROVIDER DASHBOARD) */}
             {showViewCountInDashboard && (
               <span

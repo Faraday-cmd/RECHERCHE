@@ -1,6 +1,6 @@
 import React from 'react';
 
-export type NavTab = 'decouverte' | 'prestataires' | 'messages' | 'dashboard' | 'profil';
+export type NavTab = 'decouverte' | 'amis' | 'messages' | 'dashboard' | 'profil';
 
 interface BottomNavProps {
   activeTab: NavTab;
@@ -10,7 +10,7 @@ interface BottomNavProps {
 export function BottomNav({ activeTab, onTabChange }: BottomNavProps) {
   const items: { id: NavTab; label: string; icon: string }[] = [
     { id: 'decouverte', label: 'Découv.', icon: '🏠' },
-    { id: 'prestataires', label: 'Prest.', icon: '🎓' },
+    { id: 'amis', label: 'Amis', icon: '👥' },
     { id: 'messages', label: 'Messages', icon: '💬' },
     { id: 'dashboard', label: 'Dashboard', icon: '📊' },
     { id: 'profil', label: 'Profil', icon: '👤' },

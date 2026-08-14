@@ -33,7 +33,7 @@ export interface RoleDashboardItem {
   services?: { id?: string; title: string; priceXAF?: number; priceText?: string; description: string }[];
   openingHours?: { day: string; hours: string; isToday?: boolean }[];
   courses?: { id?: string; levelCode: string; name: string; format: string; schedule: string; priceXAF: number; seatsLeft: number; startDate: string }[];
-  campuses?: { id?: string; name: string; address: string; phone?: string; contactPhones?: { label: string; number: string }[]; description?: string }[];
+  campuses?: { id?: string; name: string; address: string; city?: string; quarter?: string; phone?: string; contactPhones?: { label: string; number: string }[]; description?: string }[];
 }
 
 export interface PublishedContentItem {
@@ -51,6 +51,7 @@ export interface PublishedContentItem {
   providerCity?: string;
   providerVerified?: boolean;
   viewCount?: number;
+  likeCount?: number;
 }
 
 export interface MediaGalleryItem {

@@ -101,31 +101,6 @@ export function RightPanel({
             </button>
           </div>
 
-          {/* Widget 4: Pass Pro Entitlement Access */}
-          <div style={{ backgroundColor: '#FFFBEB', borderRadius: '14px', padding: '16px', border: '1px solid #FDE68A' }}>
-            <div style={{ fontSize: '12px', fontWeight: 700, color: '#B45309', marginBottom: '4px' }}>
-              📲 Inscription via Mobile Money
-            </div>
-            <div style={{ fontSize: '11px', color: '#92400E', lineHeight: 1.4, marginBottom: '10px' }}>
-              Réglez les frais de cours ou d&apos;accompagnement directement par USSD Orange / MTN.
-            </div>
-            <button
-              onClick={onOpenPassPro}
-              style={{
-                width: '100%',
-                minHeight: '36px',
-                backgroundColor: '#D97706',
-                color: '#FFFFFF',
-                border: 'none',
-                borderRadius: '8px',
-                fontSize: '12px',
-                fontWeight: 700,
-                cursor: 'pointer',
-              }}
-            >
-              Payer par Orange/MTN MoMo
-            </button>
-          </div>
         </div>
       ) : (
         /* DISCOVERY SPATIAL SEARCH PANEL */

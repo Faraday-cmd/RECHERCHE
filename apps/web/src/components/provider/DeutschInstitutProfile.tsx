@@ -46,6 +46,9 @@ export interface DeutschInstitutProfileProps {
   isFollowing?: boolean;
   currentUserAccountName?: string;
   verified?: boolean;
+  likedPublicationIds?: Set<string>;
+  publicationLikesMap?: Record<string, number>;
+  onLikePublication?: (pubId: string) => void;
   onFollowToggle?: () => void;
   onContactClick?: () => void;
   onBack?: () => void;
@@ -84,7 +87,7 @@ const defaultInstitutCourses: ActiveCourseItem[] = [
   },
 ];
 
-const defaultInstitutCampuses: CampusItem[] = [
+export const defaultInstitutCampuses: CampusItem[] = [
   {
     id: 'camp-1',
     name: 'Campus Douala — Akwa',
@@ -144,6 +147,9 @@ export const DeutschInstitutProfile: React.FC<DeutschInstitutProfileProps> = ({
   followerCount = 380,
   isFollowing = false,
   currentUserAccountName = 'Marc ALAIN',
+  likedPublicationIds,
+  publicationLikesMap,
+  onLikePublication,
   onFollowToggle,
   onContactClick,
   onBack,
@@ -529,6 +535,11 @@ export const DeutschInstitutProfile: React.FC<DeutschInstitutProfileProps> = ({
                       providerCity: pub.providerCity || 'Yaoundé',
                       providerVerified: pub.providerVerified ?? verified,
                     }}
+                    isFollowed={isFollowing}
+                    onFollowClick={onFollowToggle}
+                    isLiked={likedPublicationIds?.has(pub.id)}
+                    likeCount={publicationLikesMap?.[pub.id] ?? 12}
+                    onLikeClick={onLikePublication ? () => onLikePublication(pub.id) : undefined}
                     onContactClick={onContactClick}
                   />
                 ))}

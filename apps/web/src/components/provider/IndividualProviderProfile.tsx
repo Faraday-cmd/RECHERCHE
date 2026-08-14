@@ -62,6 +62,9 @@ export interface IndividualProviderProfileProps {
   followerCount?: number;
   isFollowing?: boolean;
   currentUserAccountName?: string;
+  likedPublicationIds?: Set<string>;
+  publicationLikesMap?: Record<string, number>;
+  onLikePublication?: (pubId: string) => void;
   onFollowToggle?: () => void;
   onContactClick?: () => void;
   onBack?: () => void;
@@ -139,6 +142,9 @@ export const IndividualProviderProfile: React.FC<IndividualProviderProfileProps>
   followerCount = 142,
   isFollowing = false,
   currentUserAccountName = 'Marc ALAIN',
+  likedPublicationIds,
+  publicationLikesMap,
+  onLikePublication,
   onFollowToggle,
   onContactClick,
   onBack,
@@ -571,6 +577,11 @@ export const IndividualProviderProfile: React.FC<IndividualProviderProfileProps>
                       providerCity: pub.providerCity || city,
                       providerVerified: pub.providerVerified ?? verified,
                     }}
+                    isFollowed={isFollowing}
+                    onFollowClick={onFollowToggle}
+                    isLiked={likedPublicationIds?.has(pub.id)}
+                    likeCount={publicationLikesMap?.[pub.id] ?? 12}
+                    onLikeClick={onLikePublication ? () => onLikePublication(pub.id) : undefined}
                     onContactClick={onContactClick}
                   />
                 ))}

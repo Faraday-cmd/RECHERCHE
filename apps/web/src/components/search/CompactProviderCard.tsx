@@ -11,6 +11,7 @@ export interface ProviderSummary {
   reviewCount?: number;
   verified?: boolean;
   avatarUrl?: string;
+  campusesLabel?: string;
 }
 
 interface CompactProviderCardProps {
@@ -166,7 +167,12 @@ export function CompactProviderCard({
             marginTop: '5px',
           }}
         >
-          <span>📍 {provider.city}{provider.quarter ? ` — ${provider.quarter}` : ''} {provider.distanceKm !== undefined ? `(${provider.distanceKm} km)` : ''}</span>
+          <span>
+            📍 {provider.role === 'DEUTSCH_INSTITUT' && provider.campusesLabel
+              ? provider.campusesLabel
+              : `${provider.city}${provider.quarter ? ` — ${provider.quarter}` : ''}`}
+            {provider.distanceKm !== undefined ? ` (${provider.distanceKm} km)` : ''}
+          </span>
           {provider.rating && (
             <span style={{ fontWeight: 700, color: '#D97706' }}>
               ★ {provider.rating} {provider.reviewCount ? `(${provider.reviewCount})` : ''}

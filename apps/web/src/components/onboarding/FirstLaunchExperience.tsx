@@ -397,7 +397,7 @@ export function FirstLaunchExperience({ onComplete, forceShow = false }: FirstLa
                   margin: '12px 0 0 0',
                 }}
               >
-                Accède aux profils vérifiés d&apos;enseignants de langue, de betreuers logement, d&apos;accompagnateurs visa et d&apos;instituts agréés.
+                Accède aux profils vérifiés d&apos;enseignants de langue, de betreuer, d&apos;accompagnateurs visa et d&apos;instituts agréés.
               </p>
             </div>
           )}
@@ -508,7 +508,7 @@ export function FirstLaunchExperience({ onComplete, forceShow = false }: FirstLa
                   padding: '0 4px',
                 }}
               >
-                Chat avec des gens qui font la même chose que toi.
+                Chat avec tes amis qui font la même chose que toi.
               </h2>
 
               <p
@@ -521,7 +521,7 @@ export function FirstLaunchExperience({ onComplete, forceShow = false }: FirstLa
                   margin: '12px 0 0 0',
                 }}
               >
-                Discute en direct avec d&apos;autres candidats pour partager tes démarches, poser tes questions et avancer ensemble.
+                Discute avec tes amis et des professionels pour partager tes démarches, poser tes questions et avancer ensemble.
               </p>
             </div>
           )}

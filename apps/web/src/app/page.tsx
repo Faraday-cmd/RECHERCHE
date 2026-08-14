@@ -8,7 +8,7 @@ import { RightPanel } from '../components/navigation/RightPanel';
 import { CompactProviderCard, ProviderSummary } from '../components/search/CompactProviderCard';
 import { FilterDrawer, FilterState } from '../components/search/FilterDrawer';
 import { IndividualProviderProfile } from '../components/provider/IndividualProviderProfile';
-import { DeutschInstitutProfile } from '../components/provider/DeutschInstitutProfile';
+import { DeutschInstitutProfile, defaultInstitutCampuses } from '../components/provider/DeutschInstitutProfile';
 import { ProviderDashboard, RoleDashboardItem, PublishedContentItem, MediaGalleryItem } from '../components/provider/ProviderDashboard';
 import { ConversationList, AvailableMessageRole } from '../components/messaging/ConversationList';
 import { ActiveChatView, MessageBubble } from '../components/messaging/ActiveChatView';
@@ -19,6 +19,11 @@ import { EmptyState } from '../components/ui/EmptyState';
 import { ErrorBanner } from '../components/ui/ErrorBanner';
 import { Toast } from '../components/ui/Toast';
 import { FirstLaunchExperience } from '../components/onboarding/FirstLaunchExperience';
+import { ContextualAuthModal } from '../components/ui/ContextualAuthModal';
+import { RegisterLandingPage } from '../components/auth/RegisterLandingPage';
+import { LoginModal } from '../components/auth/LoginModal';
+import { authService, UserProfile } from '../services/authService';
+import { AmisSection, FriendUser } from '../components/friends/AmisSection';
 import { getClientEnv } from '../lib/env.config';
 
 export interface ConversationThread {
@@ -33,6 +38,19 @@ export interface ConversationThread {
   updatedAt: string;
   unreadCount?: number;
 }
+
+const initialUsers: FriendUser[] = [
+  { id: 'user-1', name: 'Gonix Hunter', city: 'Douala', quarter: 'Akwa', followedProviderIds: ['prov-1', 'prov-3'], acceptedFriendIds: ['user-2', 'user-3'] },
+  { id: 'user-2', name: 'Nelia Choco', city: 'Douala', quarter: 'Bonapriso', followedProviderIds: ['prov-1'], acceptedFriendIds: ['user-1', 'user-3'] },
+  { id: 'user-3', name: 'Franc Uriel Ngantchou Mbakop', city: 'Douala', quarter: 'Makepe', followedProviderIds: ['prov-2'], acceptedFriendIds: ['user-1', 'user-2', 'user-4'] },
+  { id: 'user-4', name: 'Tøny Jørdan', city: 'Yaoundé', quarter: 'Bastos', followedProviderIds: ['prov-2', 'prov-3'], acceptedFriendIds: ['user-3'] },
+  { id: 'user-5', name: 'Eec Oyomabang', city: 'Douala', quarter: 'Akwa', followedProviderIds: ['prov-1'], acceptedFriendIds: ['user-1', 'user-2'] },
+  { id: 'user-6', name: 'Favour Armour', city: 'Yaoundé', quarter: 'Melen', followedProviderIds: ['prov-3'], acceptedFriendIds: ['user-3', 'user-4'] },
+  { id: 'user-7', name: 'Ezra Vegas', city: 'Douala', quarter: 'Akwa', followedProviderIds: ['prov-1', 'prov-2'], acceptedFriendIds: ['user-1'] },
+  { id: 'user-8', name: 'Allan Momo', city: 'Douala', quarter: 'Bonamoussadi', followedProviderIds: ['prov-1'], acceptedFriendIds: ['user-2', 'user-3', 'user-4'] },
+  { id: 'user-9', name: 'Carine MBALLA', city: 'Bafoussam', quarter: 'Centre', followedProviderIds: [], acceptedFriendIds: [] },
+  { id: 'user-10', name: 'Samuel BIKOKO', city: 'Douala', quarter: 'Deido', followedProviderIds: ['prov-3'], acceptedFriendIds: ['user-1', 'user-3'] },
+];
 
 const initialProviders: ProviderSummary[] = [
   {
@@ -56,6 +74,7 @@ const initialProviders: ProviderSummary[] = [
     rating: 4.8,
     reviewCount: 64,
     verified: true,
+    campusesLabel: 'Campus Douala & Yaoundé',
   },
   {
     id: 'prov-3',
@@ -288,6 +307,7 @@ export default function HomePage() {
     country: 'Cameroun',
     roleLabel: 'Candidat / Apprenant',
     walletBalanceXAF: 15000,
+    avatarUrl: '',
   });
   const [isEditingAccount, setIsEditingAccount] = useState(false);
   const [editAccountData, setEditAccountData] = useState({ ...accountInfo });
@@ -297,10 +317,152 @@ export default function HomePage() {
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
   const [activeMessageRoleCode, setActiveMessageRoleCode] = useState<string>('USER');
 
+  // FRIENDS & COMMUNITY SOCIAL ENGINE STATES (REQUIREMENT 1 - 8)
+  const [allUsers, setAllUsers] = useState<FriendUser[]>(initialUsers);
+  const [acceptedFriendIds, setAcceptedFriendIds] = useState<string[]>(['user-1', 'user-2', 'user-3', 'user-4']);
+  const [pendingReceivedRequests, setPendingReceivedRequests] = useState<FriendUser[]>([
+    initialUsers[4],
+    initialUsers[5],
+    initialUsers[6],
+    initialUsers[7],
+  ]);
+  const [pendingSentIds, setPendingSentIds] = useState<string[]>([]);
+
+  const handleAcceptFriendRequest = (userId: string) => {
+    setAcceptedFriendIds((prev) => Array.from(new Set([...prev, userId])));
+    setPendingReceivedRequests((prev) => prev.filter((u) => u.id !== userId));
+    const user = allUsers.find((u) => u.id === userId);
+    setToastMessage(`Demande d'ami de ${user?.name || 'l\'utilisateur'} acceptée ! 🎉`);
+  };
+
+  const handleRejectFriendRequest = (userId: string) => {
+    setPendingReceivedRequests((prev) => prev.filter((u) => u.id !== userId));
+    setToastMessage(`Demande d'ami refusée.`);
+  };
+
+  const handleSendFriendRequest = (userId: string) => {
+    setPendingSentIds((prev) => Array.from(new Set([...prev, userId])));
+    const user = allUsers.find((u) => u.id === userId);
+    setToastMessage(`Demande d'ami envoyée à ${user?.name || 'l\'utilisateur'}.`);
+  };
+
+  const handleOpenFriendMessage = (userId: string, userName: string) => {
+    let existingConv = conversations.find((c) => c.providerId === userId || c.recipientName === userName);
+    if (!existingConv) {
+      const newConv: ConversationThread = {
+        id: `conv-friend-${userId}`,
+        providerId: userId,
+        roleCode: 'USER',
+        recipientName: userName,
+        recipientRole: 'Ami(e)',
+        messages: [
+          { id: `m-init-${Date.now()}`, sender: 'provider', text: `Bonjour ! Nous sommes désormais amis sur RECHERCHE. 👋`, timestamp: 'À l\'instant' }
+        ],
+        updatedAt: 'À l\'instant',
+        unreadCount: 0,
+      };
+      setConversations((prev) => [newConv, ...prev]);
+      setActiveConversationId(newConv.id);
+    } else {
+      setActiveConversationId(existingConv.id);
+      setConversations((prev) =>
+        prev.map((c) => (c.id === existingConv!.id ? { ...c, unreadCount: 0 } : c))
+      );
+    }
+    setActiveTab('messages');
+  };
+
   const [unlockedRoles, setUnlockedRoles] = useState<RoleDashboardItem[]>(initialProviderRoles);
   const [selectedRoleId, setSelectedRoleId] = useState<string>(initialProviderRoles[0]?.userRoleId || '');
   const [posts, setPosts] = useState<PublishedContentItem[]>(initialPosts);
   const [mediaItems, setMediaItems] = useState<MediaGalleryItem[]>(initialMediaItems);
+
+  // AUTHENTICATION & INTERACTION STATES WITH INTENT PRESERVATION (REQUIREMENT 1, 2, 6, 8)
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(true);
+  const [followedRoleIds, setFollowedRoleIds] = useState<Set<string>>(new Set(['prov-1']));
+  const [likedPublicationIds, setLikedPublicationIds] = useState<Set<string>>(new Set(['post-1']));
+  const [publicationLikesMap, setPublicationLikesMap] = useState<Record<string, number>>({
+    'post-1': 14,
+    'post-2': 28,
+    'post-3': 42,
+  });
+
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState<boolean>(false);
+  const [authModalMessage, setAuthModalMessage] = useState<string>('');
+  const [isRegisterPageOpen, setIsRegisterPageOpen] = useState<boolean>(false);
+  const [isLoginPageOpen, setIsLoginPageOpen] = useState<boolean>(false);
+
+  // Restore authenticated session on mount (Requirement 8)
+  useEffect(() => {
+    const activeUser = authService.getCurrentUser();
+    if (activeUser) {
+      setIsAuthenticated(true);
+      setAccountInfo((prev) => ({
+        ...prev,
+        fullName: activeUser.fullName,
+        email: activeUser.email,
+        phone: activeUser.phone,
+        city: activeUser.city,
+      }));
+    }
+  }, []);
+
+  const [pendingAction, setPendingAction] = useState<
+    | { type: 'LIKE'; publicationId: string }
+    | { type: 'FOLLOW'; roleId: string; providerName?: string }
+    | { type: 'CONTACT'; provider: ProviderSummary }
+    | null
+  >(null);
+
+  const handleToggleFollow = (roleId: string, providerName?: string) => {
+    if (!isAuthenticated) {
+      setPendingAction({ type: 'FOLLOW', roleId, providerName });
+      setAuthModalMessage(`Crée ton compte RECHERCHE pour suivre ${providerName || 'ce prestataire'} et retrouver ses publications.`);
+      setIsAuthModalOpen(true);
+      return;
+    }
+
+    setFollowedRoleIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(roleId)) {
+        next.delete(roleId);
+        setToastMessage('Abonnement retiré.');
+      } else {
+        next.add(roleId);
+        setToastMessage(`Vous suivez maintenant ${providerName || 'ce prestataire'} !`);
+      }
+      return next;
+    });
+  };
+
+  const handleToggleLike = (pubId: string) => {
+    if (!isAuthenticated) {
+      setPendingAction({ type: 'LIKE', publicationId: pubId });
+      setAuthModalMessage('Crée ton compte RECHERCHE pour aimer cette publication et interagir avec la communauté.');
+      setIsAuthModalOpen(true);
+      return;
+    }
+
+    setLikedPublicationIds((prev) => {
+      const next = new Set(prev);
+      const isCurrentlyLiked = next.has(pubId);
+      if (isCurrentlyLiked) {
+        next.delete(pubId);
+      } else {
+        next.add(pubId);
+      }
+
+      setPublicationLikesMap((prevLikes) => {
+        const currentCount = prevLikes[pubId] ?? 12;
+        return {
+          ...prevLikes,
+          [pubId]: isCurrentlyLiked ? Math.max(0, currentCount - 1) : currentCount + 1,
+        };
+      });
+
+      return next;
+    });
+  };
 
   const userCity = accountInfo.city || filters.city || 'Douala';
 
@@ -353,12 +515,51 @@ export default function HomePage() {
       if (filters.verifiedOnly && !p.verified) return false;
       if (filters.radiusKm && p.distanceKm && p.distanceKm > filters.radiusKm) return false;
 
-      // Filter by City
+      // GEOGRAPHIC SEARCH FOR INSTITUT DE LANGUE: Evaluates ALL campuses of the institute!
+      if (p.role === 'DEUTSCH_INSTITUT') {
+        const instituteCampuses = matchingRole?.campuses && matchingRole.campuses.length > 0
+          ? matchingRole.campuses
+          : defaultInstitutCampuses;
+
+        // 1. Filter by City: Matches if AT LEAST ONE campus is located in requested city
+        if (filters.city && filters.city !== 'ALL') {
+          const targetCity = filters.city.toLowerCase();
+          const hasMatchingCampusCity = instituteCampuses.some((camp: any) => {
+            const campText = `${camp.name || ''} ${camp.address || ''} ${camp.city || ''}`.toLowerCase();
+            return campText.includes(targetCity);
+          });
+          if (!hasMatchingCampusCity) return false;
+        }
+
+        // 2. Filter by Quarter: Matches if AT LEAST ONE campus is located in requested quarter
+        if (filters.quarter && filters.quarter !== 'ALL') {
+          const targetQuarter = filters.quarter.toLowerCase();
+          const hasMatchingCampusQuarter = instituteCampuses.some((camp: any) => {
+            const campText = `${camp.name || ''} ${camp.address || ''} ${camp.quarter || ''}`.toLowerCase();
+            return campText.includes(targetQuarter);
+          });
+          if (!hasMatchingCampusQuarter) return false;
+        }
+
+        // 3. Search Bar Query: Evaluates institute name, role, OR ANY campus location/name
+        if (searchQuery.trim()) {
+          const q = searchQuery.toLowerCase();
+          const matchesNameOrRole = p.name.toLowerCase().includes(q) || p.role.toLowerCase().includes(q);
+          const matchesAnyCampus = instituteCampuses.some((camp: any) => {
+            const campText = `${camp.name || ''} ${camp.address || ''} ${camp.city || ''} ${camp.quarter || ''}`.toLowerCase();
+            return campText.includes(q);
+          });
+          if (!matchesNameOrRole && !matchesAnyCampus) return false;
+        }
+
+        return true;
+      }
+
+      // FOR OTHER ROLES (Enseignant, Betreuer, Accompagnateur Visa): Single professional location
       if (filters.city && filters.city !== 'ALL' && p.city.toLowerCase() !== filters.city.toLowerCase()) {
         return false;
       }
 
-      // Filter by Quarter
       if (filters.quarter && filters.quarter !== 'ALL') {
         if (!p.quarter || !p.quarter.toLowerCase().includes(filters.quarter.toLowerCase())) {
           return false;
@@ -378,8 +579,35 @@ export default function HomePage() {
     });
 
     const targetCity = filters.city && filters.city !== 'ALL' ? filters.city : userCity;
-    const localGroup = shuffleArray(filtered.filter((p) => p.city.toLowerCase() === targetCity.toLowerCase()));
-    const otherGroup = shuffleArray(filtered.filter((p) => p.city.toLowerCase() !== targetCity.toLowerCase()));
+    const localGroup = shuffleArray(
+      filtered.filter((p) => {
+        if (p.role === 'DEUTSCH_INSTITUT') {
+          const matchingRole = unlockedRoles.find((r) => r.userRoleId === p.id);
+          const instituteCampuses = matchingRole?.campuses && matchingRole.campuses.length > 0
+            ? matchingRole.campuses
+            : defaultInstitutCampuses;
+          return instituteCampuses.some((camp: any) =>
+            `${camp.name || ''} ${camp.address || ''} ${camp.city || ''}`.toLowerCase().includes(targetCity.toLowerCase())
+          );
+        }
+        return p.city.toLowerCase() === targetCity.toLowerCase();
+      })
+    );
+
+    const otherGroup = shuffleArray(
+      filtered.filter((p) => {
+        if (p.role === 'DEUTSCH_INSTITUT') {
+          const matchingRole = unlockedRoles.find((r) => r.userRoleId === p.id);
+          const instituteCampuses = matchingRole?.campuses && matchingRole.campuses.length > 0
+            ? matchingRole.campuses
+            : defaultInstitutCampuses;
+          return !instituteCampuses.some((camp: any) =>
+            `${camp.name || ''} ${camp.address || ''} ${camp.city || ''}`.toLowerCase().includes(targetCity.toLowerCase())
+          );
+        }
+        return p.city.toLowerCase() !== targetCity.toLowerCase();
+      })
+    );
 
     return [...localGroup, ...otherGroup];
   }, [allIndexedProviders, filters, searchQuery, userCity, unlockedRoles]);
@@ -424,6 +652,13 @@ export default function HomePage() {
   };
 
   const handleContactProvider = (provider: ProviderSummary) => {
+    if (!isAuthenticated) {
+      setPendingAction({ type: 'CONTACT', provider });
+      setAuthModalMessage(`Crée ton compte RECHERCHE pour contacter ${provider.name} et démarrer la discussion.`);
+      setIsAuthModalOpen(true);
+      return;
+    }
+
     let conv = conversations.find((c) => c.providerId === provider.id);
     if (!conv) {
       conv = {
@@ -452,12 +687,16 @@ export default function HomePage() {
     setActiveTab('messages');
   };
 
-  const handleSendMessage = (convId: string, text: string) => {
+  const handleSendMessage = (convId: string, text: string, mediaProps?: Partial<MessageBubble>) => {
     const newMsg: MessageBubble = {
       id: `msg-${Date.now()}`,
       sender: 'user',
-      text,
+      text: text || mediaProps?.text || '',
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      type: mediaProps?.type || 'text',
+      mediaUrl: mediaProps?.mediaUrl,
+      fileName: mediaProps?.fileName,
+      durationSeconds: mediaProps?.durationSeconds,
     };
 
     setConversations((prev) =>
@@ -465,6 +704,7 @@ export default function HomePage() {
         if (c.id === convId) {
           return {
             ...c,
+            lastMessage: newMsg.type === 'voice' ? '🎤 Message vocal' : newMsg.type === 'image' ? '📷 Photo' : newMsg.type === 'file' ? `📎 Document : ${newMsg.fileName}` : newMsg.text,
             messages: [...c.messages, newMsg],
             updatedAt: newMsg.timestamp,
             unreadCount: 0,
@@ -632,7 +872,17 @@ export default function HomePage() {
     })),
   ];
 
+  const unreadConversationsCount = useMemo(() => {
+    const friendConvs = conversations.filter(
+      (c) => c.recipientRole === 'Ami(e)' || c.id.startsWith('conv-friend-')
+    );
+    return friendConvs.filter((c) => (c.unreadCount || 0) > 0).length;
+  }, [conversations]);
+
   const filteredConversations = conversations.filter((c) => {
+    const isFriendConv = c.recipientRole === 'Ami(e)' || c.id.startsWith('conv-friend-');
+    if (isFriendConv) return false;
+
     if (activeMessageRoleCode === 'USER') {
       return !c.roleCode || c.roleCode === 'USER';
     }
@@ -651,20 +901,28 @@ export default function HomePage() {
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#F8FAFC', display: 'flex', justifyContent: 'center', position: 'relative' }}>
       {showFirstLaunch && (
-        <FirstLaunchExperience onComplete={() => setShowFirstLaunch(false)} />
+        <FirstLaunchExperience
+          onComplete={() => {
+            setShowFirstLaunch(false);
+            setActiveTab('decouverte');
+            setSelectedProvider(null);
+          }}
+        />
       )}
-      <DesktopSidebar
-        activeTab={activeTab}
-        onTabChange={(tab) => {
-          setSelectedProvider(null);
-          setActiveTab(tab);
-        }}
-      />
+      {!showFirstLaunch && (
+        <DesktopSidebar
+          activeTab={activeTab}
+          onTabChange={(tab) => {
+            setSelectedProvider(null);
+            setActiveTab(tab);
+          }}
+        />
+      )}
 
-      <div style={{ flex: 1, maxWidth: '820px', display: 'flex', flexDirection: 'column', minWidth: 0, width: '100%' }}>
+      <div style={{ flex: 1, maxWidth: activeTab === 'messages' ? '100%' : '820px', display: 'flex', flexDirection: 'column', minWidth: 0, width: '100%' }}>
         <Header currentCity={accountInfo.city || filters.city} />
 
-        <main style={{ padding: '16px 16px 90px 16px', flex: 1, minWidth: 0, width: '100%' }}>
+        <main style={{ padding: activeTab === 'messages' ? (activeConv ? '0 0 65px 0' : '0 0 75px 0') : '16px 16px 90px 16px', flex: 1, minWidth: 0, width: '100%', display: 'flex', flexDirection: 'column' }}>
           {apiError && (
             <ErrorBanner message={apiError} onRetry={() => setApiError(null)} />
           )}
@@ -691,7 +949,12 @@ export default function HomePage() {
                         if (p.status !== 'PUBLISHED') return false;
                         return p.roleId === selectedProvider.id || (p.providerRole === 'DEUTSCH_INSTITUT' && p.providerName === selectedProvider.name);
                       })}
-                      followerCount={matchingRole?.followers || 380}
+                      followerCount={(matchingRole?.followers || 380) + (followedRoleIds.has(selectedProvider.id) ? 1 : 0)}
+                      isFollowing={followedRoleIds.has(selectedProvider.id)}
+                      likedPublicationIds={likedPublicationIds}
+                      publicationLikesMap={publicationLikesMap}
+                      onFollowToggle={() => handleToggleFollow(selectedProvider.id, selectedProvider.name)}
+                      onLikePublication={(pubId) => handleToggleLike(pubId)}
                       verified={selectedProvider.verified}
                       subscriptionStatus="ACTIVE"
                       onBack={() => setSelectedProvider(null)}
@@ -729,6 +992,12 @@ export default function HomePage() {
                         if (p.status !== 'PUBLISHED') return false;
                         return p.roleId === selectedProvider.id || (p.providerRole === selectedProvider.role && p.providerName === selectedProvider.name);
                       })}
+                      followerCount={(matchingRole?.followers || 142) + (followedRoleIds.has(selectedProvider.id) ? 1 : 0)}
+                      isFollowing={followedRoleIds.has(selectedProvider.id)}
+                      likedPublicationIds={likedPublicationIds}
+                      publicationLikesMap={publicationLikesMap}
+                      onFollowToggle={() => handleToggleFollow(selectedProvider.id, selectedProvider.name)}
+                      onLikePublication={(pubId) => handleToggleLike(pubId)}
                       verified={selectedProvider.verified}
                       subscriptionStatus={selectedProvider.id === 'prov-1' ? 'GRACE_1' : 'ACTIVE'}
                       onBack={() => setSelectedProvider(null)}
@@ -858,6 +1127,11 @@ export default function HomePage() {
                             <PublicationCard
                               key={pub.id}
                               publication={pub}
+                              isFollowed={followedRoleIds.has(pub.roleId)}
+                              onFollowClick={() => handleToggleFollow(pub.roleId, pub.providerName)}
+                              isLiked={likedPublicationIds.has(pub.id)}
+                              likeCount={publicationLikesMap[pub.id] ?? pub.likeCount ?? 12}
+                              onLikeClick={() => handleToggleLike(pub.id)}
                               onContactClick={() => {
                                 const providerSummary: ProviderSummary = {
                                   id: pub.roleId || 'prov-1',
@@ -956,59 +1230,22 @@ export default function HomePage() {
                 </div>
               )}
 
-              {/* TAB 2: PRESTATAIRES */}
-              {activeTab === 'prestataires' && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                  <h2 style={{ fontSize: '20px', fontWeight: 800, color: '#0F172A', margin: 0 }}>
-                    Profils des Prestataires Vérifiés
-                  </h2>
-                  <IndividualProviderProfile
-                    id="prov-1"
-                    roleCode="BETREUER"
-                    roleName="Betreuer"
-                    displayName="Dr. Thomas MBIDA"
-                    shortBio="Accompagnateur spécialisé pour l'installation, les démarches universitaires et la réservation de logement en Allemagne."
-                    fullDescription={`Spécialiste de la mobilité estudiantine germano-camerounaise depuis 2018.\n\nServices proposés:\n- Recherche et réservation de chambre d'étudiant (Wohnheim/WG)\n- Prise en charge à l'aéroport et accompagnement inscription ville (Bürgeramt)\n- Assistance ouverture compte bloqué bancaire.`}
-                    city="Douala"
-                    distanceKm={2.4}
-                    rating={4.9}
-                    reviewCount={28}
-                    verified={true}
-                    publications={posts.filter(
-                      (p) => p.status === 'PUBLISHED' && (p.roleId === 'ur-2' || p.roleId === 'prov-1' || (p.providerRole === 'BETREUER' && p.providerName === 'Dr. Thomas MBIDA'))
-                    )}
-                    subscriptionStatus="GRACE_1"
-                    onContactClick={() =>
-                      handleContactProvider({
-                        id: 'prov-1',
-                        name: 'Dr. Thomas MBIDA',
-                        role: 'BETREUER',
-                        city: 'Douala',
-                        verified: true,
-                      })
-                    }
-                  />
-
-                  <DeutschInstitutProfile
-                    id="prov-2"
-                    displayName="Institut Goethe Partner Cameroon"
-                    shortBio="Centre d'excellence pour l'apprentissage de la langue allemande et la préparation aux épreuves du Goethe-Zertifikat A1-C1."
-                    fullDescription={`L'Institut Goethe Partner Cameroon forme chaque année plus de 800 étudiants aux exigences linguistiques et culturelles allemandes.\n\nNos engagements:\n- Enseignants certifiés et matériel pédagogique moderne\n- Examens blancs hebdomadaires gratuits pour nos abonnés\n- Salles de cours climatisées et médiathèque ouverte 6j/7.`}
-                    publications={posts.filter(
-                      (p) => p.status === 'PUBLISHED' && (p.roleId === 'prov-2' || (p.providerRole === 'DEUTSCH_INSTITUT' && p.providerName?.includes('Goethe')))
-                    )}
-                    subscriptionStatus="ACTIVE"
-                    onContactClick={() =>
-                      handleContactProvider({
-                        id: 'prov-2',
-                        name: 'Institut Goethe Partner Cameroon',
-                        role: 'DEUTSCH_INSTITUT',
-                        city: 'Yaoundé',
-                        verified: true,
-                      })
-                    }
-                  />
-                </div>
+              {/* TAB 2: AMIS */}
+              {activeTab === 'amis' && (
+                <AmisSection
+                  currentUserCity={accountInfo.city}
+                  currentUserFollowedProviderIds={Array.from(followedRoleIds)}
+                  allUsers={allUsers}
+                  acceptedFriendIds={acceptedFriendIds}
+                  pendingReceivedRequests={pendingReceivedRequests}
+                  pendingSentIds={pendingSentIds}
+                  unreadConversationsCount={unreadConversationsCount}
+                  onAcceptRequest={handleAcceptFriendRequest}
+                  onRejectRequest={handleRejectFriendRequest}
+                  onSendRequest={handleSendFriendRequest}
+                  onOpenMessage={handleOpenFriendMessage}
+                  onGoToMessagesTab={() => setActiveTab('messages')}
+                />
               )}
 
               {/* TAB 3: MESSAGES */}
@@ -1019,9 +1256,12 @@ export default function HomePage() {
                       providerId={activeConv.providerId}
                       recipientName={activeConv.recipientName}
                       recipientRole={activeConv.recipientRole}
+                      recipientAvatar={activeConv.recipientAvatar}
+                      userAvatar={accountInfo.avatarUrl}
                       verified={activeConv.verified}
                       messages={activeConv.messages}
                       onSendMessage={(text) => handleSendMessage(activeConv.id, text)}
+                      onSendMediaMessage={(mediaProps) => handleSendMessage(activeConv.id, '', mediaProps)}
                       onBack={() => setActiveConversationId(null)}
                     />
                   ) : (
@@ -1133,22 +1373,114 @@ export default function HomePage() {
                           fontSize: '12px',
                           fontWeight: 800,
                           cursor: 'pointer',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '6px',
                         }}
                         title="Revoir le splash screen et les 2 écrans d'onboarding"
                       >
                         <span>🚀 Revoir Onboarding</span>
                       </button>
+                      {isAuthenticated ? (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            authService.logout();
+                            setIsAuthenticated(false);
+                            setToastMessage('Vous avez été déconnecté. Mode Invité activé.');
+                          }}
+                          style={{
+                            minHeight: '40px',
+                            padding: '0 16px',
+                            backgroundColor: '#FEF2F2',
+                            color: '#DC2626',
+                            border: '1px solid #FCA5A5',
+                            borderRadius: '10px',
+                            fontSize: '12.5px',
+                            fontWeight: 800,
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                          }}
+                          title="Se déconnecter de votre compte RECHERCHE"
+                        >
+                          <span>🚪 Déconnexion</span>
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => setIsLoginPageOpen(true)}
+                          style={{
+                            minHeight: '40px',
+                            padding: '0 16px',
+                            backgroundColor: '#F5F3FF',
+                            color: '#5B21B6',
+                            border: '1px solid #DDD6FE',
+                            borderRadius: '10px',
+                            fontSize: '12.5px',
+                            fontWeight: 800,
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                          }}
+                          title="Se connecter à votre compte"
+                        >
+                          <span>🔐 Se connecter</span>
+                        </button>
+                      )}
                     </div>
 
-                    {/* USER PROFILE SUMMARY HEADER */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '16px', backgroundColor: '#F8FAFC', borderRadius: '16px', border: '1px solid #E2E8F0', marginBottom: '20px' }}>
-                      <div style={{ width: '64px', height: '64px', borderRadius: '20px', backgroundColor: '#EDE9FE', color: '#5B21B6', fontSize: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '2px solid #DDD6FE', flexShrink: 0 }}>
-                        👨‍🎓
+                    {/* USER PROFILE SUMMARY HEADER WITH NATIVE FILE PICKER */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '16px', backgroundColor: '#F8FAFC', borderRadius: '16px', border: '1px solid #E2E8F0', marginBottom: '20px', flexWrap: 'wrap' }}>
+                      <div style={{ position: 'relative', flexShrink: 0 }}>
+                        <div style={{ width: '72px', height: '72px', borderRadius: '50%', backgroundColor: '#EDE9FE', color: '#5B21B6', fontSize: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '3px solid #5B21B6', overflow: 'hidden' }}>
+                          {accountInfo.avatarUrl ? (
+                            <img src={accountInfo.avatarUrl} alt={accountInfo.fullName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                          ) : (
+                            '👨‍🎓'
+                          )}
+                        </div>
+                        <label
+                          style={{
+                            position: 'absolute',
+                            bottom: '-2px',
+                            right: '-2px',
+                            width: '28px',
+                            height: '28px',
+                            borderRadius: '50%',
+                            backgroundColor: '#5B21B6',
+                            color: '#FFFFFF',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: '13px',
+                            cursor: 'pointer',
+                            boxShadow: '0 2px 6px rgba(0,0,0,0.2)',
+                          }}
+                          title="Changer ma photo de profil"
+                        >
+                          📷
+                          <input
+                            type="file"
+                            accept="image/*"
+                            style={{ display: 'none' }}
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (!file) return;
+                              const reader = new FileReader();
+                              reader.onload = (evt) => {
+                                if (evt.target?.result) {
+                                  const newUrl = evt.target.result as string;
+                                  setAccountInfo((prev) => ({ ...prev, avatarUrl: newUrl }));
+                                  setToastMessage('Photo de profil mise à jour avec succès ! 📷');
+                                }
+                              };
+                              reader.readAsDataURL(file);
+                            }}
+                          />
+                        </label>
                       </div>
-                      <div style={{ flex: 1, minWidth: 0 }}>
+
+                      <div style={{ flex: 1, minWidth: '200px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                           <h3 style={{ fontSize: '18px', fontWeight: 800, color: '#0F172A', margin: 0 }}>
                             {accountInfo.fullName}
@@ -1330,14 +1662,16 @@ export default function HomePage() {
         onContactClick={(prov) => handleContactProvider(prov)}
       />
 
-      {/* Mobile Bottom Navigation */}
-      <BottomNav
-        activeTab={activeTab}
-        onTabChange={(tab) => {
-          setSelectedProvider(null);
-          setActiveTab(tab);
-        }}
-      />
+      {/* Mobile Bottom Navigation (Hidden completely during onboarding) */}
+      {!showFirstLaunch && (
+        <BottomNav
+          activeTab={activeTab}
+          onTabChange={(tab) => {
+            setSelectedProvider(null);
+            setActiveTab(tab);
+          }}
+        />
+      )}
 
       {/* Filter Drawer Sheet */}
       <FilterDrawer
@@ -1352,6 +1686,137 @@ export default function HomePage() {
         isOpen={isPassModalOpen}
         onClose={() => setIsPassModalOpen(false)}
         onPaymentSuccess={() => setToastMessage('Abonnement activé avec succès via Mobile Money !')}
+      />
+
+      {/* CONTEXTUAL AUTH MODAL FOR GUEST USERS (REQUIREMENT 1 & 6) */}
+      <ContextualAuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+        message={authModalMessage}
+        onRegister={() => {
+          setIsAuthModalOpen(false);
+          setIsRegisterPageOpen(true);
+        }}
+        onLogin={() => {
+          setIsAuthModalOpen(false);
+          setIsLoginPageOpen(true);
+        }}
+      />
+
+      {/* NEW ACCOUNT CREATION LANDING PAGE WITH DESKTOP SPLIT-SCREEN & INTENT PRESERVATION */}
+      <RegisterLandingPage
+        isOpen={isRegisterPageOpen}
+        pendingActionContext={
+          pendingAction?.type === 'LIKE'
+            ? 'pour aimer cette publication'
+            : pendingAction?.type === 'FOLLOW'
+            ? `pour suivre ${pendingAction.providerName || 'ce prestataire'}`
+            : pendingAction?.type === 'CONTACT'
+            ? `pour contacter ${pendingAction.provider.name}`
+            : undefined
+        }
+        onClose={() => {
+          setIsRegisterPageOpen(false);
+          setPendingAction(null);
+        }}
+        onRegisterSuccess={(userData) => {
+          setIsAuthenticated(true);
+          setAccountInfo((prev) => ({
+            ...prev,
+            fullName: userData.fullName,
+            email: userData.email,
+            phone: userData.phone,
+            city: userData.city,
+          }));
+          setFilters((prev) => ({
+            ...prev,
+            city: userData.city,
+          }));
+          setIsRegisterPageOpen(false);
+
+          // INTENT PRESERVATION ENGINE EXECUTION
+          const actionToExecute = pendingAction;
+          setPendingAction(null);
+
+          if (actionToExecute) {
+            setTimeout(() => {
+              if (actionToExecute.type === 'LIKE') {
+                handleToggleLike(actionToExecute.publicationId);
+                setToastMessage(`Bienvenue ${userData.fullName} ! Votre compte est créé et la publication a été aimée ! ❤️`);
+              } else if (actionToExecute.type === 'FOLLOW') {
+                handleToggleFollow(actionToExecute.roleId, actionToExecute.providerName);
+                setToastMessage(`Bienvenue ${userData.fullName} ! Votre compte est créé et vous suivez maintenant ce prestataire ! ✨`);
+              } else if (actionToExecute.type === 'CONTACT') {
+                handleContactProvider(actionToExecute.provider);
+                setToastMessage(`Bienvenue ${userData.fullName} ! Discussion ouverte avec ${actionToExecute.provider.name}. 💬`);
+              }
+            }, 100);
+          } else {
+            setToastMessage(`Bienvenue sur RECHERCHE, ${userData.fullName} ! Votre compte a été créé avec succès. 🚀`);
+          }
+        }}
+        onSwitchToLogin={() => {
+          setIsRegisterPageOpen(false);
+          setIsLoginPageOpen(true);
+        }}
+      />
+
+      {/* LOGIN MODAL WITH INCORRECT CREDENTIALS ERROR & FORGOTTEN PASSWORD FLOW */}
+      <LoginModal
+        isOpen={isLoginPageOpen}
+        pendingActionContext={
+          pendingAction?.type === 'LIKE'
+            ? 'pour aimer cette publication'
+            : pendingAction?.type === 'FOLLOW'
+            ? `pour suivre ${pendingAction.providerName || 'ce prestataire'}`
+            : pendingAction?.type === 'CONTACT'
+            ? `pour contacter ${pendingAction.provider.name}`
+            : undefined
+        }
+        onClose={() => {
+          setIsLoginPageOpen(false);
+          setPendingAction(null);
+        }}
+        onLoginSuccess={(user) => {
+          setIsAuthenticated(true);
+          setAccountInfo((prev) => ({
+            ...prev,
+            fullName: user.fullName,
+            email: user.email,
+            phone: user.phone,
+            city: user.city,
+          }));
+          setFilters((prev) => ({
+            ...prev,
+            city: user.city,
+          }));
+          setIsLoginPageOpen(false);
+
+          // INTENT PRESERVATION ENGINE EXECUTION UPON LOGIN
+          const actionToExecute = pendingAction;
+          setPendingAction(null);
+
+          if (actionToExecute) {
+            setTimeout(() => {
+              if (actionToExecute.type === 'LIKE') {
+                handleToggleLike(actionToExecute.publicationId);
+                setToastMessage(`Ravi de vous revoir ${user.fullName} ! La publication a été aimée ! ❤️`);
+              } else if (actionToExecute.type === 'FOLLOW') {
+                handleToggleFollow(actionToExecute.roleId, actionToExecute.providerName);
+                setToastMessage(`Ravi de vous revoir ${user.fullName} ! Vous suivez maintenant ce prestataire ! ✨`);
+              } else if (actionToExecute.type === 'CONTACT') {
+                handleContactProvider(actionToExecute.provider);
+                setToastMessage(`Ravi de vous revoir ${user.fullName} ! Discussion ouverte avec ${actionToExecute.provider.name}. 💬`);
+              }
+            }, 100);
+          } else {
+            setToastMessage(`Ravi de vous revoir sur RECHERCHE, ${user.fullName} ! Connexion réussie. 🚀`);
+          }
+        }}
+        onSwitchToRegister={() => {
+          setIsLoginPageOpen(false);
+          setIsRegisterPageOpen(true);
+        }}
       />
 
       {/* FULLSCREEN IMAGE MODAL VIEWER */}
