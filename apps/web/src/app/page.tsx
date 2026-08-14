@@ -18,6 +18,7 @@ import { SkeletonCard } from '../components/ui/SkeletonCard';
 import { EmptyState } from '../components/ui/EmptyState';
 import { ErrorBanner } from '../components/ui/ErrorBanner';
 import { Toast } from '../components/ui/Toast';
+import { FirstLaunchExperience } from '../components/onboarding/FirstLaunchExperience';
 import { getClientEnv } from '../lib/env.config';
 
 export interface ConversationThread {
@@ -257,6 +258,18 @@ export default function HomePage() {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   const [fullscreenImageUrl, setFullscreenImageUrl] = useState<string | null>(null);
+  const [showFirstLaunch, setShowFirstLaunch] = useState<boolean>(true);
+
+  useEffect(() => {
+    try {
+      const seen = localStorage.getItem('recherche_onboarding_seen');
+      if (seen === 'true') {
+        setShowFirstLaunch(false);
+      }
+    } catch (e) {
+      // Safe fallback
+    }
+  }, []);
 
   const [filters, setFilters] = useState<FilterState>({
     roleFilter: 'INFOS',
@@ -637,6 +650,9 @@ export default function HomePage() {
 
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#F8FAFC', display: 'flex', justifyContent: 'center', position: 'relative' }}>
+      {showFirstLaunch && (
+        <FirstLaunchExperience onComplete={() => setShowFirstLaunch(false)} />
+      )}
       <DesktopSidebar
         activeTab={activeTab}
         onTabChange={(tab) => {
@@ -1103,6 +1119,27 @@ export default function HomePage() {
                         }}
                       >
                         <span>{isEditingAccount ? '💾 Enregistrer' : '✏️ Modifier le compte'}</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setShowFirstLaunch(true)}
+                        style={{
+                          minHeight: '40px',
+                          padding: '0 14px',
+                          backgroundColor: '#F5F3FF',
+                          color: '#5B21B6',
+                          border: '1px solid #DDD6FE',
+                          borderRadius: '10px',
+                          fontSize: '12px',
+                          fontWeight: 800,
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                        }}
+                        title="Revoir le splash screen et les 2 écrans d'onboarding"
+                      >
+                        <span>🚀 Revoir Onboarding</span>
                       </button>
                     </div>
 
