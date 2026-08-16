@@ -37,7 +37,7 @@ const getI18nPath = () => {
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      envFilePath: ['.env.local', '.env'],
+      ignoreEnvFile: true,
       validate: validateEnv,
     }),
     ThrottlerModule.forRoot([

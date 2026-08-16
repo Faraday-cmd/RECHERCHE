@@ -4,18 +4,7 @@ import { ValidationPipe } from '@nestjs/common';
 import { ExpressAdapter } from '@nestjs/platform-express';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import express from 'express';
-
-// Load pre-compiled AppModule with full NestJS decorator metadata
-let AppModule: any;
-try {
-  AppModule = require('../dist/src/app.module').AppModule;
-} catch {
-  try {
-    AppModule = require('../dist/app.module').AppModule;
-  } catch {
-    AppModule = require('../src/app.module').AppModule;
-  }
-}
+import { AppModule } from '../src/app.module';
 
 const server = express();
 let isInitialized = false;
@@ -73,6 +62,14 @@ export const createServer = async (): Promise<express.Express> => {
 };
 
 export default async (req: any, res: any) => {
+  if (req.url === '/ping' || req.url === '/api/ping') {
+    return res.status(200).json({
+      status: 'PONG',
+      serverless: true,
+      timestamp: new Date().toISOString(),
+    });
+  }
+
   try {
     await createServer();
     server(req, res);
@@ -81,7 +78,8 @@ export default async (req: any, res: any) => {
     res.status(500).json({
       statusCode: 500,
       error: 'Internal Server Error',
-      message: err.message || 'Serverless function failed to initialize.',
+      message: err?.message || 'Serverless function failed to initialize.',
+      stack: err?.stack || undefined,
       timestamp: new Date().toISOString(),
     });
   }
