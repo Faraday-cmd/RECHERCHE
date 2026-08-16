@@ -26,7 +26,11 @@ const getI18nPath = () => {
   if (fs.existsSync(distPath)) return distPath;
   const srcPath = path.join(process.cwd(), 'apps/api/src/i18n');
   if (fs.existsSync(srcPath)) return srcPath;
-  return path.join(process.cwd(), 'src/i18n');
+  const cwdPath = path.join(process.cwd(), 'src/i18n');
+  if (fs.existsSync(cwdPath)) return cwdPath;
+  const relativePath = path.join(__dirname, '../src/i18n');
+  if (fs.existsSync(relativePath)) return relativePath;
+  return __dirname;
 };
 
 @Module({
