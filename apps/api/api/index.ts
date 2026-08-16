@@ -4,7 +4,14 @@ import { ValidationPipe } from '@nestjs/common';
 import { ExpressAdapter } from '@nestjs/platform-express';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import express from 'express';
-import { AppModule } from '../src/app.module';
+
+// Load pre-compiled AppModule from dist (preserves tsc decorator metadata for NestJS DI)
+let AppModule: any;
+try {
+  AppModule = require('../dist/src/app.module').AppModule;
+} catch {
+  AppModule = require('../src/app.module').AppModule;
+}
 
 const server = express();
 let isBootstrapped = false;
@@ -71,6 +78,7 @@ export default async function handler(req: any, res: any) {
       statusCode: 500,
       error: 'Internal Server Error',
       message: err?.message || 'Serverless function failed to initialize.',
+      stack: err?.stack || undefined,
       timestamp: new Date().toISOString(),
     });
   }
