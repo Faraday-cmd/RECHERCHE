@@ -1,24 +1,77 @@
-export default function handler(req: any, res: any) {
-  const url = req.url || '';
+import 'reflect-metadata';
+import { NestFactory } from '@nestjs/core';
+import { ValidationPipe } from '@nestjs/common';
+import { ExpressAdapter } from '@nestjs/platform-express';
+import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import express from 'express';
+import { AppModule } from '../src/app.module';
 
-  // Resend Inbound Email Webhook Route (/api/v1/email/webhook)
-  if (url.includes('/email/webhook')) {
-    if (req.method === 'GET' || req.method === 'POST') {
-      return res.status(200).json({
-        status: 'OK',
-        message: 'Resend email received webhook endpoint active.',
-        timestamp: new Date().toISOString(),
-      });
-    }
-    return res.status(405).json({ error: 'Method Not Allowed' });
+const server = express();
+let isInitialized = false;
+
+// Middleware for rawBody capture (required for Svix webhook signature verification)
+server.use(
+  express.json({
+    verify: (req: any, _res, buf) => {
+      req.rawBody = buf;
+    },
+  }),
+);
+
+export const createServer = async (): Promise<express.Express> => {
+  if (!isInitialized) {
+    const app = await NestFactory.create(AppModule, new ExpressAdapter(server), {
+      logger: ['error', 'warn', 'log'],
+    });
+
+    // Enable Graceful Shutdown Hooks
+    app.enableShutdownHooks();
+
+    // Set Global API Prefix
+    app.setGlobalPrefix(process.env.API_PREFIX || 'api/v1');
+
+    // CORS Configuration
+    app.enableCors({
+      origin: process.env.CORS_ORIGIN || '*',
+      credentials: true,
+    });
+
+    // Global DTO Input Validation Pipe
+    app.useGlobalPipes(
+      new ValidationPipe({
+        whitelist: true,
+        forbidNonWhitelisted: true,
+        transform: true,
+      }),
+    );
+
+    // OpenAPI / Swagger Documentation Setup
+    const config = new DocumentBuilder()
+      .setTitle('RECHERCHE V1 Backend API')
+      .setDescription('Authoritative REST API documentation for Recherche contextual discovery platform.')
+      .setVersion('1.0.0-rc1')
+      .addBearerAuth()
+      .build();
+    const document = SwaggerModule.createDocument(app, config);
+    SwaggerModule.setup('api/docs', app, document);
+
+    await app.init();
+    isInitialized = true;
   }
+  return server;
+};
 
-  // Root Backend Health Metadata Route (/api/v1)
-  return res.status(200).json({
-    status: 'OK',
-    name: 'RECHERCHE V1 Backend API',
-    version: '1.0.0-rc1',
-    endpoint: url,
-    timestamp: new Date().toISOString(),
-  });
+export default async function handler(req: any, res: any) {
+  try {
+    const instance = await createServer();
+    return instance(req, res);
+  } catch (err: any) {
+    console.error('[FATAL VERCEL SERVERLESS BOOT ERROR]:', err);
+    return res.status(500).json({
+      statusCode: 500,
+      error: 'Internal Server Error',
+      message: err?.message || 'Serverless function failed to initialize.',
+      timestamp: new Date().toISOString(),
+    });
+  }
 }
