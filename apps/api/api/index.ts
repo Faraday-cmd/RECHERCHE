@@ -1,4 +1,4 @@
-export default async function handler(req: any, res: any) {
+export default function handler(req: any, res: any) {
   const url = req.url || '';
 
   // Resend Inbound Email Webhook Route (/api/v1/email/webhook)
