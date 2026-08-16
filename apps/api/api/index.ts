@@ -1,25 +1,49 @@
 import { Webhook } from 'svix';
 import { PrismaClient, ReportTarget, ReportStatus } from '@prisma/client';
 
-// Production Vercel Serverless Function Handler with Supabase PostgreSQL connection
-let prisma: PrismaClient;
-try {
-  const dbUrl =
-    process.env.DATABASE_URL && process.env.DATABASE_URL.trim().startsWith('postgres')
-      ? process.env.DATABASE_URL.trim()
-      : 'postgresql://postgres:password@localhost:5432/postgres';
-  prisma = new PrismaClient({
-    datasources: { db: { url: dbUrl } },
-  });
-} catch {
-  prisma = new PrismaClient();
+function sanitizeDbUrl(url?: string): string {
+  if (!url) return 'NOT_CONFIGURED';
+  try {
+    const parsed = new URL(url.trim());
+    const hasPassword = !!parsed.password;
+    const isPlaceholder =
+      parsed.password.includes('YOUR-PASSWORD') ||
+      parsed.password.includes('[YOUR') ||
+      parsed.password === 'password';
+    return `${parsed.protocol}//${parsed.username}:${
+      hasPassword
+        ? isPlaceholder
+          ? '[PLACEHOLDER_PASSWORD]'
+          : '[VALID_PASSWORD_SET]'
+        : '[NO_PASSWORD]'
+    }@${parsed.host}${parsed.pathname}`;
+  } catch {
+    return 'INVALID_URL_FORMAT';
+  }
 }
+
+function getPrismaClient(): PrismaClient {
+  const primaryUrl = (process.env.DIRECT_URL || process.env.DATABASE_URL || '').trim();
+  if (primaryUrl.startsWith('postgres')) {
+    return new PrismaClient({
+      datasources: { db: { url: primaryUrl } },
+    });
+  }
+  return new PrismaClient();
+}
+
+const prisma = getPrismaClient();
 
 export default async function handler(req: any, res: any) {
   const url = req.url || '';
 
   // Read-only Production Database Verification Endpoint (/api/v1/email/webhook/verify)
   if (url.includes('/email/webhook/verify')) {
+    const dbInfo = {
+      databaseUrlStatus: sanitizeDbUrl(process.env.DATABASE_URL),
+      directUrlStatus: sanitizeDbUrl(process.env.DIRECT_URL),
+    };
+
     try {
       const latestReport = await prisma.report.findFirst({
         orderBy: { createdAt: 'desc' },
@@ -38,9 +62,10 @@ export default async function handler(req: any, res: any) {
       let parsedDetails = null;
       if (latestReport && latestReport.details) {
         try {
-          parsedDetails = typeof latestReport.details === 'string'
-            ? JSON.parse(latestReport.details)
-            : latestReport.details;
+          parsedDetails =
+            typeof latestReport.details === 'string'
+              ? JSON.parse(latestReport.details)
+              : latestReport.details;
         } catch {
           parsedDetails = latestReport.details;
         }
@@ -48,6 +73,7 @@ export default async function handler(req: any, res: any) {
 
       return res.status(200).json({
         status: 'OK',
+        connection: dbInfo,
         verification: {
           reportCreated: !!latestReport,
           report: latestReport
@@ -78,6 +104,7 @@ export default async function handler(req: any, res: any) {
     } catch (err: any) {
       return res.status(200).json({
         status: 'NOTE',
+        connection: dbInfo,
         message: err?.message || 'Database query note.',
         timestamp: new Date().toISOString(),
       });
@@ -95,6 +122,8 @@ export default async function handler(req: any, res: any) {
         status: 'OK',
         message: 'Resend email received webhook endpoint active.',
         resendWebhookSecretConfigured: !!process.env.RESEND_WEBHOOK_SECRET,
+        databaseUrlStatus: sanitizeDbUrl(process.env.DATABASE_URL),
+        directUrlStatus: sanitizeDbUrl(process.env.DIRECT_URL),
         timestamp: new Date().toISOString(),
       });
     }
@@ -277,6 +306,8 @@ export default async function handler(req: any, res: any) {
     version: '1.0.0-rc1',
     endpoint: url,
     resendWebhookSecretConfigured: !!process.env.RESEND_WEBHOOK_SECRET,
+    databaseUrlStatus: sanitizeDbUrl(process.env.DATABASE_URL),
+    directUrlStatus: sanitizeDbUrl(process.env.DIRECT_URL),
     timestamp: new Date().toISOString(),
   });
 }
