@@ -4,7 +4,18 @@ import { ValidationPipe } from '@nestjs/common';
 import { ExpressAdapter } from '@nestjs/platform-express';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import express from 'express';
-import { AppModule } from '../src/app.module';
+
+// Load pre-compiled AppModule with full NestJS decorator metadata
+let AppModule: any;
+try {
+  AppModule = require('../dist/src/app.module').AppModule;
+} catch {
+  try {
+    AppModule = require('../dist/app.module').AppModule;
+  } catch {
+    AppModule = require('../src/app.module').AppModule;
+  }
+}
 
 const server = express();
 let isInitialized = false;
