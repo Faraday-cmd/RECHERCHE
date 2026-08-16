@@ -42,6 +42,11 @@ export const envSchema = z.object({
   S3_ACCESS_KEY: z.string().optional().default('placeholder_s3_access_key'),
   S3_SECRET_KEY: z.string().optional().default('placeholder_s3_secret_key'),
   S3_REGION: z.string().optional().default('us-east-1'),
+
+  // Resend Email Integration Secrets & Webhook Verification
+  RESEND_API_KEY: z.string().optional().default(''),
+  RESEND_WEBHOOK_SECRET: z.string().optional().default(''),
+  RESEND_FROM_EMAIL: z.string().optional().default('RECHERCHE <notifications@recherche.cm>'),
 });
 
 export type EnvConfig = z.infer<typeof envSchema>;

@@ -111,6 +111,7 @@ export class SocialService {
       adminUserId: recipientUserId,
       action: 'FRIEND_REQUEST_ACCEPTED',
       resource: `Friendship:${friendshipId}`,
+      details: {},
       ipAddress,
     });
 
@@ -142,6 +143,7 @@ export class SocialService {
       adminUserId: recipientUserId,
       action: 'FRIEND_REQUEST_REJECTED',
       resource: `Friendship:${friendshipId}`,
+      details: {},
       ipAddress,
     });
 
@@ -209,6 +211,7 @@ export class SocialService {
       adminUserId: blockerId,
       action: 'USER_BLOCKED',
       resource: `User:${blockedId}`,
+      details: {},
       ipAddress,
     });
 
@@ -235,6 +238,7 @@ export class SocialService {
       adminUserId: blockerId,
       action: 'USER_UNBLOCKED',
       resource: `User:${blockedId}`,
+      details: {},
       ipAddress,
     });
 

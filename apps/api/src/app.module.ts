@@ -3,6 +3,7 @@ import { ConfigModule } from '@nestjs/config';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { HeaderResolver, I18nModule, AcceptLanguageResolver } from 'nestjs-i18n';
 import * as path from 'path';
+import * as fs from 'fs';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { validateEnv } from './config/env.schema';
@@ -18,6 +19,15 @@ import { CourseModule } from './modules/course/course.module';
 import { SearchModule } from './modules/search/search.module';
 import { MessagingModule } from './modules/messaging/messaging.module';
 import { SocialModule } from './modules/social/social.module';
+import { EmailModule } from './modules/email/email.module';
+
+const getI18nPath = () => {
+  const distPath = path.join(__dirname, 'i18n');
+  if (fs.existsSync(distPath)) return distPath;
+  const srcPath = path.join(process.cwd(), 'apps/api/src/i18n');
+  if (fs.existsSync(srcPath)) return srcPath;
+  return path.join(process.cwd(), 'src/i18n');
+};
 
 @Module({
   imports: [
@@ -35,8 +45,8 @@ import { SocialModule } from './modules/social/social.module';
     I18nModule.forRoot({
       fallbackLanguage: 'fr',
       loaderOptions: {
-        path: path.join(__dirname, '/i18n/'),
-        watch: true,
+        path: getI18nPath(),
+        watch: false,
       },
       resolvers: [
         new HeaderResolver(['x-custom-lang']),
@@ -55,6 +65,7 @@ import { SocialModule } from './modules/social/social.module';
     SearchModule,
     MessagingModule,
     SocialModule,
+    EmailModule,
   ],
   controllers: [AppController],
   providers: [AppService],

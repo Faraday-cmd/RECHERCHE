@@ -5,6 +5,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { Prisma } from '@prisma/client';
 import { CreateProviderProfileDto } from './dto/create-provider-profile.dto';
 import { UpdateProviderProfileDto } from './dto/update-provider-profile.dto';
 import { AuditService } from '../audit/audit.service';
@@ -128,7 +129,7 @@ export class ProviderService {
         profilePicUrl: dto.profilePicUrl || null,
         coverPicUrl: dto.coverPicUrl || null,
         phoneNumbers: dto.phoneNumbers || [],
-        openingHours: dto.openingHours || null,
+        openingHours: dto.openingHours || Prisma.DbNull,
         yearFounded: dto.yearFounded || null,
         fixedLocationGeom: dto.fixedLocationGeom || null,
         publicationStatus: 'CONFIGURED',

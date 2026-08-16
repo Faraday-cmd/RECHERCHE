@@ -5,6 +5,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { Prisma } from '@prisma/client';
 import { CreateInfoDto } from './dto/create-info.dto';
 import { UpdateInfoDto } from './dto/update-info.dto';
 import { CreateCommentDto } from './dto/create-comment.dto';
@@ -85,7 +86,7 @@ export class InfoService {
         description: sanitizedDesc,
         infoType: dto.infoType,
         contentLang: dto.contentLang || 'de',
-        photosJson: dto.photosJson || null,
+        photosJson: dto.photosJson || Prisma.DbNull,
         videoUrl: dto.videoUrl || null,
         ctaType: dto.ctaType || 'CONTACT',
         status: 'PUBLISHED',
@@ -305,7 +306,7 @@ export class InfoService {
           },
         },
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { publishedAt: 'desc' },
     });
 
     return infos.map((info) => {

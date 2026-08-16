@@ -8,9 +8,20 @@ import express from 'express';
 const server = express();
 let isInitialized = false;
 
-export const createServer = async () => {
+// Middleware for rawBody capture (required for Svix webhook signature verification)
+server.use(
+  express.json({
+    verify: (req: any, _res, buf) => {
+      req.rawBody = buf;
+    },
+  }),
+);
+
+export const createServer = async (): Promise<express.Express> => {
   if (!isInitialized) {
-    const app = await NestFactory.create(AppModule, new ExpressAdapter(server));
+    const app = await NestFactory.create(AppModule, new ExpressAdapter(server), {
+      logger: ['error', 'warn', 'log'],
+    });
 
     // Enable Graceful Shutdown Hooks
     app.enableShutdownHooks();
@@ -50,6 +61,16 @@ export const createServer = async () => {
 };
 
 export default async (req: any, res: any) => {
-  await createServer();
-  server(req, res);
+  try {
+    await createServer();
+    server(req, res);
+  } catch (err: any) {
+    console.error('[FATAL VERCEL SERVERLESS BOOT ERROR]:', err);
+    res.status(500).json({
+      statusCode: 500,
+      error: 'Internal Server Error',
+      message: err.message || 'Serverless function failed to initialize.',
+      timestamp: new Date().toISOString(),
+    });
+  }
 };

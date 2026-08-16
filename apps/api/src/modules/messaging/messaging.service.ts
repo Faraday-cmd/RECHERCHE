@@ -5,6 +5,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { Prisma } from '@prisma/client';
 import { CreateConversationDto } from './dto/create-conversation.dto';
 import { SendMessageDto } from './dto/send-message.dto';
 import { GetMessagesDto } from './dto/get-messages.dto';
@@ -206,7 +207,7 @@ export class MessagingService {
         senderUserId,
         senderRoleId: senderRoleId || null,
         content: sanitizedContent,
-        attachments: attachments || null,
+        attachments: attachments || Prisma.DbNull,
       },
     });
 
