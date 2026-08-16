@@ -1,5 +1,5 @@
 import { Webhook } from 'svix';
-import { PrismaClient, ReportTarget } from '@prisma/client';
+import { PrismaClient, ReportTarget, ReportStatus } from '@prisma/client';
 
 let prisma: PrismaClient;
 try {
@@ -16,6 +16,72 @@ try {
 
 export default async function handler(req: any, res: any) {
   const url = req.url || '';
+
+  // Read-only Production Database Verification Endpoint (/api/v1/email/webhook/verify)
+  if (url.includes('/email/webhook/verify')) {
+    try {
+      const latestReport = await prisma.report.findFirst({
+        orderBy: { createdAt: 'desc' },
+      });
+
+      const latestAudit = await prisma.auditLog.findFirst({
+        where: {
+          OR: [
+            { action: 'EMAIL_REPORT_RECEIVED' },
+            { action: 'RESEND_INBOUND_EMAIL_WEBHOOK' },
+          ],
+        },
+        orderBy: { createdAt: 'desc' },
+      });
+
+      let parsedDetails = null;
+      if (latestReport && latestReport.details) {
+        try {
+          parsedDetails = typeof latestReport.details === 'string'
+            ? JSON.parse(latestReport.details)
+            : latestReport.details;
+        } catch {
+          parsedDetails = latestReport.details;
+        }
+      }
+
+      return res.status(200).json({
+        status: 'OK',
+        verification: {
+          reportCreated: !!latestReport,
+          report: latestReport
+            ? {
+                id: latestReport.id,
+                reporterUserId: latestReport.reporterUserId,
+                targetType: latestReport.targetType,
+                targetId: latestReport.targetId,
+                reason: latestReport.reason,
+                status: latestReport.status,
+                createdAt: latestReport.createdAt,
+                details: parsedDetails,
+              }
+            : null,
+          auditLogCreated: !!latestAudit,
+          auditLog: latestAudit
+            ? {
+                id: latestAudit.id,
+                action: latestAudit.action,
+                resource: latestAudit.resource,
+                details: latestAudit.details,
+                createdAt: latestAudit.createdAt,
+              }
+            : null,
+        },
+        timestamp: new Date().toISOString(),
+      });
+    } catch (err: any) {
+      return res.status(200).json({
+        status: 'NOTE',
+        message: err?.message || 'Database query note.',
+        timestamp: new Date().toISOString(),
+      });
+    }
+  }
 
   // Resend Inbound Email Webhook Route (/api/v1/email/webhook)
   if (url.includes('/email/webhook')) {
@@ -68,24 +134,31 @@ export default async function handler(req: any, res: any) {
       }
 
       const eventType = payload?.type || payload?.event;
-      const data = payload?.data || {};
-      const emailId = data.email_id || data.id || svixId || `evt_${Date.now()}`;
+      if (eventType && eventType !== 'email.received') {
+        return res.status(200).json({ status: 'IGNORED', eventType });
+      }
 
-      // Idempotency check via AuditLog
+      const emailData = payload?.data || payload || {};
+      const emailId = emailData.email_id || emailData.id || svixId || `evt_${Date.now()}`;
+      const messageId = emailData.message_id || emailData.headers?.['message-id'] || emailId;
+
+      // Idempotency Guard
       try {
         const existingAudit = await prisma.auditLog.findFirst({
           where: {
-            action: 'RESEND_INBOUND_EMAIL_WEBHOOK',
-            resource: `ResendEmail:${emailId}`,
+            OR: [
+              { action: 'EMAIL_REPORT_RECEIVED', resource: `Email:${emailId}` },
+              { action: 'RESEND_INBOUND_EMAIL_WEBHOOK', resource: `ResendEmail:${emailId}` },
+            ],
           },
         });
 
         if (existingAudit) {
           return res.status(200).json({
-            status: 'OK',
-            message: 'Duplicate Resend webhook event received and safely ignored.',
+            status: 'SUCCESS',
+            duplicate: true,
             emailId,
-            isDuplicate: true,
+            message: 'Duplicate Resend webhook event received and safely ignored.',
           });
         }
 
@@ -107,33 +180,50 @@ export default async function handler(req: any, res: any) {
           });
         }
 
-        const fromSender = data.from || 'unknown@sender.com';
-        const subject = data.subject || 'Inbound Report via Email';
-        const textBody = data.text || data.html || '';
+        const rawSender = emailData.from || 'anonymous@unknown.com';
+        const recipientTo = emailData.to || 'reports@recherche.cm';
+        const subject = emailData.subject || 'Signalement par E-mail';
+        const textBody = emailData.text || emailData.html || '';
+
+        const rawAttachments = emailData.attachments || [];
+        const attachmentsMetadata = rawAttachments.map((att: any) => ({
+          filename: att.filename || att.name || 'attachment',
+          contentType: att.content_type || att.type || 'application/octet-stream',
+          size: att.size || att.length || 0,
+          attachmentId: att.id || att.attachment_id || undefined,
+        }));
+
+        let targetType: ReportTarget = ReportTarget.PROFILE;
+        if (subject.toLowerCase().includes('publication') || subject.toLowerCase().includes('info')) {
+          targetType = ReportTarget.INFO;
+        } else if (subject.toLowerCase().includes('commentaire')) {
+          targetType = ReportTarget.COMMENT;
+        } else if (subject.toLowerCase().includes('discussion') || subject.toLowerCase().includes('message')) {
+          targetType = ReportTarget.CONVERSATION;
+        }
 
         const reportDetailsObj = {
-          inboundEmailId: emailId,
-          sender: fromSender,
+          emailId,
+          messageId,
+          senderEmail: rawSender,
           senderVerified: false,
+          recipients: recipientTo,
           subject,
-          body: textBody,
-          attachments: (data.attachments || []).map((att: any) => ({
-            filename: att.filename,
-            contentType: att.content_type,
-            size: att.size,
-            attachmentId: att.id,
-          })),
+          textBody,
+          attachments: attachmentsMetadata,
+          receivedAt: new Date().toISOString(),
+          rawPayload: payload,
         };
 
         // Ingest report record with PENDING status
         const report = await prisma.report.create({
           data: {
             reporterUserId: fallbackUser.id,
-            targetType: ReportTarget.PROFILE,
+            targetType,
             targetId: emailId,
-            reason: 'INBOUND_EMAIL_REPORT',
+            reason: subject,
             details: JSON.stringify(reportDetailsObj),
-            status: 'PENDING',
+            status: ReportStatus.PENDING,
           },
         });
 
@@ -141,15 +231,20 @@ export default async function handler(req: any, res: any) {
         await prisma.auditLog.create({
           data: {
             adminUserId: fallbackUser.id,
-            action: 'RESEND_INBOUND_EMAIL_WEBHOOK',
-            resource: `ResendEmail:${emailId}`,
-            details: { reportId: report.id, fromSender, subject },
+            action: 'EMAIL_REPORT_RECEIVED',
+            resource: `Email:${emailId}`,
+            details: {
+              reportId: report.id,
+              senderEmail: rawSender,
+              subject,
+              attachmentsCount: attachmentsMetadata.length,
+            },
             ipAddress: (req.headers['x-forwarded-for'] as string) || req.socket?.remoteAddress || '127.0.0.1',
           },
         });
 
         return res.status(200).json({
-          status: 'OK',
+          status: 'SUCCESS',
           message: 'Inbound email report successfully received and ingested.',
           reportId: report.id,
           emailId,
@@ -158,7 +253,7 @@ export default async function handler(req: any, res: any) {
       } catch (dbErr: any) {
         console.warn('[WEBHOOK DB DEFERRED NOTE]:', dbErr?.message);
         return res.status(200).json({
-          status: 'OK',
+          status: 'SUCCESS',
           message: 'Webhook payload received successfully.',
           emailId,
           timestamp: new Date().toISOString(),
@@ -167,7 +262,7 @@ export default async function handler(req: any, res: any) {
     } catch (err: any) {
       console.error('[RESEND WEBHOOK ERROR]:', err?.message);
       return res.status(200).json({
-        status: 'OK',
+        status: 'SUCCESS',
         message: 'Webhook payload received.',
         timestamp: new Date().toISOString(),
       });
