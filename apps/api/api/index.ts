@@ -4,14 +4,7 @@ import { ValidationPipe } from '@nestjs/common';
 import { ExpressAdapter } from '@nestjs/platform-express';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import express from 'express';
-
-// Load pre-compiled AppModule from dist if available (guarantees NestJS decorator metadata in Vercel serverless)
-let AppModule: any;
-try {
-  AppModule = require('../dist/src/app.module').AppModule;
-} catch {
-  AppModule = require('../src/app.module').AppModule;
-}
+import { AppModule } from '../src/app.module';
 
 const server = express();
 let isInitialized = false;
