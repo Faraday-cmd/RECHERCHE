@@ -1,6 +1,7 @@
 import { Webhook } from 'svix';
 import { PrismaClient, ReportTarget, ReportStatus } from '@prisma/client';
 
+// Production Vercel Serverless Function Handler with Supabase PostgreSQL connection
 function sanitizeDbUrl(url?: string): string {
   if (!url) return 'NOT_CONFIGURED';
   try {
