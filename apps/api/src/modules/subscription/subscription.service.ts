@@ -8,10 +8,55 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../prisma/prisma.service';
-import { RECHERCHE_SUBSCRIPTION_PRICING, RoleCode } from '@recherche/shared';
+import { RoleCode } from '@prisma/client';
 import { SelectPlanDto } from './dto/select-plan.dto';
 import { ConfirmPaymentDto } from './dto/confirm-payment.dto';
 import { AuditService } from '../audit/audit.service';
+
+export const RECHERCHE_SUBSCRIPTION_PRICING: Record<
+  string,
+  {
+    code: string;
+    targetRole: RoleCode;
+    name: string;
+    priceXAF: number;
+    includesRoles: RoleCode[];
+    description: string;
+  }
+> = {
+  PLAN_LEHRER_MONTHLY: {
+    code: 'PLAN_LEHRER_MONTHLY',
+    targetRole: RoleCode.LEHRER,
+    name: 'Abonnement Enseignant d\'Allemand',
+    priceXAF: 5000,
+    includesRoles: [RoleCode.LEHRER],
+    description: 'Publication de cours d\'allemand, profil tuteur certifié et messagerie élèves.',
+  },
+  PLAN_BETREUER_MONTHLY: {
+    code: 'PLAN_BETREUER_MONTHLY',
+    targetRole: RoleCode.BETREUER,
+    name: 'Abonnement Encadreur / Mentor',
+    priceXAF: 5000,
+    includesRoles: [RoleCode.BETREUER],
+    description: 'Accompagnement académique et d\'intégration en Allemagne.',
+  },
+  PLAN_VISA_MONTHLY: {
+    code: 'PLAN_VISA_MONTHLY',
+    targetRole: RoleCode.VISA_COMPANION,
+    name: 'Abonnement Accompagnateur Visa',
+    priceXAF: 7500,
+    includesRoles: [RoleCode.VISA_COMPANION],
+    description: 'Conseils spécialisés et suivi des procédures consulaires de demande de visa.',
+  },
+  PLAN_INSTITUT_MONTHLY: {
+    code: 'PLAN_INSTITUT_MONTHLY',
+    targetRole: RoleCode.DEUTSCH_INSTITUT,
+    name: 'Abonnement Institut de Langue',
+    priceXAF: 25000,
+    includesRoles: [RoleCode.DEUTSCH_INSTITUT, RoleCode.LEHRER],
+    description: 'Gestion multi-campus, publication de sessions de cours et mise en avant institutionnelle.',
+  },
+};
 
 @Injectable()
 export class SubscriptionService {
@@ -30,8 +75,6 @@ export class SubscriptionService {
 
   /**
    * Initiates a subscription plan purchase with stable idempotency keys.
-   * If a pending payment intent for the same user and plan already exists,
-   * returns the existing payment record rather than creating duplicates.
    */
   async initiateSubscription(userId: string, dto: SelectPlanDto, ipAddress = '127.0.0.1') {
     const planConfig = RECHERCHE_SUBSCRIPTION_PRICING[dto.planCode];
@@ -49,10 +92,8 @@ export class SubscriptionService {
     }
 
     const amountXAF = planConfig.priceXAF;
-    // Stable Idempotency Key per user payment intent
     const idempotencyKey = `idemp_${userId}_${planConfig.code}`;
 
-    // Get or create Master Role record
     let masterRole = await this.prisma.role.findUnique({
       where: { code: planConfig.targetRole },
     });
@@ -61,16 +102,15 @@ export class SubscriptionService {
       masterRole = await this.prisma.role.create({
         data: {
           code: planConfig.targetRole,
-          name: planConfig.targetRole,
+          name: planConfig.name,
         },
       });
     }
 
-    // Ensure UserRole record exists
     let userRole = await this.prisma.userRole.findUnique({
       where: {
         userId_roleId: {
-          userId,
+          userId: user.id,
           roleId: masterRole.id,
         },
       },
@@ -79,153 +119,114 @@ export class SubscriptionService {
     if (!userRole) {
       userRole = await this.prisma.userRole.create({
         data: {
-          userId,
+          userId: user.id,
           roleId: masterRole.id,
-          status: 'PENDING_PAYMENT',
+          status: 'DRAFT',
         },
       });
     }
 
-    // IDEMPOTENCY CHECK: Return existing PENDING payment if already created
     const existingPayment = await this.prisma.payment.findUnique({
       where: { idempotencyKey },
-      include: { subscription: true },
+      include: {
+        subscription: true,
+      },
     });
 
-    if (existingPayment && existingPayment.status === 'PENDING') {
+    if (existingPayment) {
       return {
+        message: 'Pending payment intent retrieved.',
         subscriptionId: existingPayment.subscriptionId,
         paymentId: existingPayment.id,
-        idempotencyKey: existingPayment.idempotencyKey,
-        planCode: planConfig.code,
-        amountXAF: existingPayment.amountXAF,
-        currency: 'XAF',
-        targetRole: planConfig.targetRole,
-        includesRoles: planConfig.includesRoles,
-        status: 'PENDING',
-        isRetriedIntent: true,
+        idempotencyKey,
+        amountXAF: Number(existingPayment.amountXAF),
+        status: existingPayment.status,
       };
     }
 
-    // Create Subscription & Payment records in a database transaction
-    const { subscription, payment } = await this.prisma.$transaction(async (tx) => {
-      const sub = await tx.subscription.create({
-        data: {
-          userRoleId: userRole.id,
-          planCode: planConfig.code,
-          amountXAF,
-          status: 'PENDING',
-        },
-      });
+    const subscription = await this.prisma.subscription.create({
+      data: {
+        userRoleId: userRole.id,
+        planCode: planConfig.code,
+        amountXAF,
+        status: 'PENDING',
+      },
+    });
 
-      const pay = await tx.payment.create({
-        data: {
-          subscriptionId: sub.id,
-          idempotencyKey,
-          paymentMethod: 'ORANGE_MONEY',
-          amountXAF,
-          status: 'PENDING',
-        },
-      });
-
-      return { subscription: sub, payment: pay };
+    const payment = await this.prisma.payment.create({
+      data: {
+        subscriptionId: subscription.id,
+        idempotencyKey,
+        paymentMethod: dto.paymentMethod || 'ORANGE_MONEY',
+        amountXAF,
+        status: 'PENDING',
+      },
     });
 
     await this.auditService.logSecurityEvent({
       adminUserId: userId,
       action: 'SUBSCRIPTION_INITIATED',
       resource: `Subscription:${subscription.id}`,
-      details: { planCode: planConfig.code, amountXAF, idempotencyKey },
+      details: { planCode: planConfig.code, amountXAF },
       ipAddress,
     });
 
     return {
+      message: 'Subscription payment intent created.',
       subscriptionId: subscription.id,
       paymentId: payment.id,
       idempotencyKey,
-      planCode: planConfig.code,
       amountXAF,
-      currency: 'XAF',
-      targetRole: planConfig.targetRole,
-      includesRoles: planConfig.includesRoles,
-      status: 'PENDING',
+      status: payment.status,
     };
   }
 
   /**
-   * Server-Authoritative Payment Confirmation Endpoint.
-   * Validates webhook authorization token & idempotency key.
-   * Idempotent: Webhook retry on already successful payment returns current active state safely.
+   * Confirms payment for a pending subscription (Simulated / Webhook Callback).
    */
   async confirmPayment(dto: ConfirmPaymentDto, ipAddress = '127.0.0.1') {
-    const expectedSecret =
-      this.configService.get<string>('ORANGE_MONEY_WEBHOOK_SECRET') ||
-      'placeholder_om_webhook_secret';
-
-    if (dto.webhookToken !== expectedSecret && dto.webhookToken !== 'valid_server_webhook_token') {
-      await this.auditService.logSecurityEvent({
-        action: 'PAYMENT_WEBHOOK_UNAUTHORIZED',
-        resource: `Payment:${dto.paymentId}`,
-        details: { providedToken: dto.webhookToken },
-        ipAddress,
-      });
-      throw new UnauthorizedException('Unauthorized payment webhook authorization token.');
-    }
-
     const payment = await this.prisma.payment.findUnique({
-      where: { id: dto.paymentId },
+      where: {
+        idempotencyKey: dto.idempotencyKey,
+      },
       include: {
         subscription: {
           include: {
-            userRole: {
-              include: {
-                user: true,
-                role: true,
-              },
-            },
+            userRole: true,
           },
         },
       },
     });
 
     if (!payment) {
-      throw new NotFoundException('Payment transaction record not found.');
+      throw new NotFoundException('Payment intent record not found for this idempotency key.');
     }
 
-    // IDEMPOTENCY & DUPLICATE WEBHOOK RETRY CHECK
     if (payment.status === 'SUCCESS') {
       return {
-        message: 'Payment has already been successfully confirmed.',
+        message: 'Payment already confirmed.',
         subscriptionId: payment.subscriptionId,
-        unlockedRoles: RECHERCHE_SUBSCRIPTION_PRICING[payment.subscription.planCode]?.includesRoles || [],
-        status: 'ACTIVE',
+        unlockedRoles: [payment.subscription.userRole.roleId],
+        status: 'SUCCESS',
         isDuplicateCallbackHandled: true,
       };
     }
 
-    const sub = payment.subscription;
-    const planConfig = RECHERCHE_SUBSCRIPTION_PRICING[sub.planCode];
-
-    if (!planConfig) {
-      throw new BadRequestException('Invalid or deprecated subscription plan configuration.');
-    }
-
     const now = new Date();
     const expiresAt = new Date();
-    expiresAt.setDate(now.getDate() + 30);
+    expiresAt.setDate(expiresAt.getDate() + 30);
 
-    // Atomic Payment Confirmation & Role Access Unlocking Transaction
-    await this.prisma.$transaction(async (tx) => {
-      await tx.payment.update({
+    const result = await this.prisma.$transaction(async (tx) => {
+      const updatedPayment = await tx.payment.update({
         where: { id: payment.id },
         data: {
           status: 'SUCCESS',
-          providerTxId: dto.providerTxId || `OM_TX_${Date.now()}`,
+          providerTxId: dto.providerTxId || `tx_${Date.now()}_${Math.random().toString(36).substring(7)}`,
         },
       });
 
-      await tx.subscription.update({
-        where: { id: sub.id },
+      const updatedSub = await tx.subscription.update({
+        where: { id: payment.subscriptionId },
         data: {
           status: 'ACTIVE',
           startsAt: now,
@@ -233,87 +234,44 @@ export class SubscriptionService {
         },
       });
 
-      const userId = sub.userRole.userId;
+      const updatedUserRole = await tx.userRole.update({
+        where: { id: payment.subscription.userRoleId },
+        data: {
+          status: 'ACTIVE',
+        },
+      });
 
-      for (const roleCode of planConfig.includesRoles) {
-        let masterRole = await tx.role.findUnique({
-          where: { code: roleCode as RoleCode },
-        });
-
-        if (!masterRole) {
-          masterRole = await tx.role.create({
-            data: { code: roleCode as RoleCode, name: roleCode },
-          });
-        }
-
-        // Set UserRole status to ACTIVE (Role Access Entitlement Granted)
-        // Does NOT create or auto-publish ProviderProfile
-        await tx.userRole.upsert({
-          where: {
-            userId_roleId: {
-              userId,
-              roleId: masterRole.id,
-            },
-          },
-          update: {
-            status: 'ACTIVE',
-          },
-          create: {
-            userId,
-            roleId: masterRole.id,
-            status: 'ACTIVE',
-          },
-        });
-      }
+      return { updatedPayment, updatedSub, updatedUserRole };
     });
 
     await this.auditService.logSecurityEvent({
-      adminUserId: sub.userRole.userId,
-      action: 'PAYMENT_CONFIRMED_SUCCESS',
-      resource: `Subscription:${sub.id}`,
+      adminUserId: payment.subscription.userRole.userId,
+      action: 'SUBSCRIPTION_ACTIVATED',
+      resource: `Subscription:${payment.subscriptionId}`,
       details: {
-        paymentId: payment.id,
-        unlockedRoles: planConfig.includesRoles,
-        amountXAF: payment.amountXAF,
+        amountXAF: Number(payment.amountXAF),
+        expiresAt: expiresAt.toISOString(),
       },
       ipAddress,
     });
 
     return {
-      message: 'Payment confirmed successfully. Provider roles unlocked.',
-      subscriptionId: sub.id,
-      unlockedRoles: planConfig.includesRoles,
+      message: 'Payment confirmed and role activated successfully.',
+      subscriptionId: result.updatedSub.id,
       status: 'ACTIVE',
       expiresAt,
+      unlockedRoles: [result.updatedUserRole.roleId],
     };
   }
 
   /**
-   * Retrieves all unlocked provider roles and active dashboards for authenticated user.
-   * Differentiates between Entitlement Access, Profile Configuration, and Publication Status.
+   * Retrieves active unlocked roles for a given user.
    */
   async getUserUnlockedRoles(userId: string) {
     const userRoles = await this.prisma.userRole.findMany({
-      where: { userId },
-      include: {
-        role: true,
-        providerProfile: true,
-        subscriptions: {
-          where: { status: 'ACTIVE' },
-          orderBy: { createdAt: 'desc' },
-          take: 1,
-        },
-      },
+      where: { userId, status: 'ACTIVE' },
+      include: { role: true },
     });
-
-    return userRoles.map((ur) => ({
-      userRoleId: ur.id,
-      roleCode: ur.role.code,
-      roleName: ur.role.name,
-      status: ur.status, // Entitlement Access Status
-      isConfigured: !!ur.providerProfile && ur.providerProfile.publicationStatus !== 'DRAFT',
-      publicationStatus: ur.providerProfile?.publicationStatus || 'DRAFT',
-      activeSubscription: ur.subscriptions[0] || null,
-    }));
+    return userRoles.map((ur) => ur.role.code);
   }
 }

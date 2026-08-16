@@ -1,6 +1,6 @@
 import { IsEnum, IsBoolean, IsOptional } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { ProfileVisibility } from '@recherche/shared';
+import { ProfileVisibility } from '@prisma/client';
 
 export class UpdatePrivacySettingsDto {
   @ApiPropertyOptional({ enum: ProfileVisibility, example: ProfileVisibility.PUBLIC })

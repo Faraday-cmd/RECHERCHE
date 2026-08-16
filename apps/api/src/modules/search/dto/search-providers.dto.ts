@@ -9,7 +9,7 @@ import {
 } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { RoleCode } from '@recherche/shared';
+import { RoleCode } from '@prisma/client';
 
 export class SearchProvidersDto {
   @ApiPropertyOptional({ enum: RoleCode, description: 'Filter by specific provider role' })
