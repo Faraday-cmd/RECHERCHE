@@ -1,35 +1,24 @@
-import express from 'express';
+export default async function handler(req: any, res: any) {
+  const url = req.url || '';
 
-const app: express.Express = express();
+  // Resend Inbound Email Webhook Route (/api/v1/email/webhook)
+  if (url.includes('/email/webhook')) {
+    if (req.method === 'GET' || req.method === 'POST') {
+      return res.status(200).json({
+        status: 'OK',
+        message: 'Resend email received webhook endpoint active.',
+        timestamp: new Date().toISOString(),
+      });
+    }
+    return res.status(405).json({ error: 'Method Not Allowed' });
+  }
 
-app.use(express.json());
-
-app.get('/api/v1', (_req, res) => {
-  res.status(200).json({
+  // Root Backend Health Metadata Route (/api/v1)
+  return res.status(200).json({
     status: 'OK',
     name: 'RECHERCHE V1 Backend API',
-    message: 'Vercel Serverless Function active and healthy.',
+    version: '1.0.0-rc1',
+    endpoint: url,
     timestamp: new Date().toISOString(),
   });
-});
-
-app.post('/api/v1/email/webhook', (_req, res) => {
-  res.status(200).json({
-    status: 'OK',
-    message: 'Resend email received webhook endpoint ready.',
-    timestamp: new Date().toISOString(),
-  });
-});
-
-app.all('*', (req, res) => {
-  res.status(200).json({
-    status: 'OK',
-    name: 'RECHERCHE V1 Backend API',
-    path: req.url,
-    timestamp: new Date().toISOString(),
-  });
-});
-
-export default function handler(req: any, res: any) {
-  app(req, res);
 }
