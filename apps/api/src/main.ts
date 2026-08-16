@@ -74,8 +74,8 @@ if (!process.env.VERCEL) {
 // Vercel Serverless Function Handler
 export default async function handler(req: any, res: any) {
   try {
-    await createServer();
-    server(req, res);
+    const instance = await createServer();
+    instance(req, res);
   } catch (err: any) {
     console.error('[FATAL VERCEL SERVERLESS BOOT ERROR]:', err);
     res.status(500).json({
