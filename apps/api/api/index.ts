@@ -1,10 +1,5 @@
 import 'reflect-metadata';
-import { NestFactory } from '@nestjs/core';
-import { ValidationPipe } from '@nestjs/common';
-import { ExpressAdapter } from '@nestjs/platform-express';
-import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import express from 'express';
-import { AppModule } from '../src/app.module';
 
 const server = express();
 let isInitialized = false;
@@ -20,6 +15,13 @@ server.use(
 
 export const createServer = async (): Promise<express.Express> => {
   if (!isInitialized) {
+    // Dynamic requires inside try/catch boundary for Vercel Serverless Function resilience
+    const { NestFactory } = require('@nestjs/core');
+    const { ValidationPipe } = require('@nestjs/common');
+    const { ExpressAdapter } = require('@nestjs/platform-express');
+    const { DocumentBuilder, SwaggerModule } = require('@nestjs/swagger');
+    const { AppModule } = require('../src/app.module');
+
     const app = await NestFactory.create(AppModule, new ExpressAdapter(server), {
       logger: ['error', 'warn', 'log'],
     });
