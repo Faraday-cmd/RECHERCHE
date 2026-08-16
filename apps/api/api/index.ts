@@ -30,6 +30,6 @@ app.all('*', (req, res) => {
   });
 });
 
-export default async function handler(req: any, res: any) {
-  return app(req, res);
+export default function handler(req: any, res: any) {
+  app(req, res);
 }
