@@ -1,23 +1,16 @@
 import { Webhook } from 'svix';
 import { PrismaClient, ReportTarget, ReportStatus } from '@prisma/client';
 
-// Production Vercel Serverless Function Handler with Supabase PostgreSQL connection
 function sanitizeDbUrl(url?: string): string {
   if (!url) return 'NOT_CONFIGURED';
   try {
     const parsed = new URL(url.trim());
-    const hasPassword = !!parsed.password;
+    const pass = parsed.password || '';
     const isPlaceholder =
-      parsed.password.includes('YOUR-PASSWORD') ||
-      parsed.password.includes('[YOUR') ||
-      parsed.password === 'password';
-    return `${parsed.protocol}//${parsed.username}:${
-      hasPassword
-        ? isPlaceholder
-          ? '[PLACEHOLDER_PASSWORD]'
-          : '[VALID_PASSWORD_SET]'
-        : '[NO_PASSWORD]'
-    }@${parsed.host}${parsed.pathname}`;
+      pass.includes('YOUR-PASSWORD') ||
+      pass.includes('[YOUR') ||
+      pass === 'password';
+    return `${parsed.protocol}//${parsed.username}:[len=${pass.length},placeholder=${isPlaceholder}]@${parsed.host}${parsed.pathname}`;
   } catch {
     return 'INVALID_URL_FORMAT';
   }
