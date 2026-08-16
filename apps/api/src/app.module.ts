@@ -22,15 +22,28 @@ import { SocialModule } from './modules/social/social.module';
 import { EmailModule } from './modules/email/email.module';
 
 const getI18nPath = () => {
-  const distPath = path.join(__dirname, 'i18n');
-  if (fs.existsSync(distPath)) return distPath;
-  const srcPath = path.join(process.cwd(), 'apps/api/src/i18n');
-  if (fs.existsSync(srcPath)) return srcPath;
-  const cwdPath = path.join(process.cwd(), 'src/i18n');
-  if (fs.existsSync(cwdPath)) return cwdPath;
-  const relativePath = path.join(__dirname, '../src/i18n');
-  if (fs.existsSync(relativePath)) return relativePath;
-  return __dirname;
+  const possiblePaths = [
+    path.join(__dirname, 'i18n'),
+    path.join(process.cwd(), 'apps/api/src/i18n'),
+    path.join(process.cwd(), 'src/i18n'),
+    path.join(__dirname, '../src/i18n'),
+  ];
+
+  for (const p of possiblePaths) {
+    if (fs.existsSync(p) && fs.statSync(p).isDirectory()) {
+      return p;
+    }
+  }
+
+  // Safe fallback directory preventing nestjs-i18n JSON parse syntax errors on Lambda
+  const safeTmp = path.join(process.cwd(), '.temp_i18n');
+  if (!fs.existsSync(safeTmp)) {
+    try {
+      fs.mkdirSync(safeTmp, { recursive: true });
+      fs.writeFileSync(path.join(safeTmp, 'fr.json'), '{}');
+    } catch {}
+  }
+  return safeTmp;
 };
 
 @Module({
