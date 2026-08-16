@@ -1,8 +1,13 @@
 import 'reflect-metadata';
+import { NestFactory } from '@nestjs/core';
+import { ValidationPipe } from '@nestjs/common';
+import { ExpressAdapter } from '@nestjs/platform-express';
+import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import express from 'express';
+import { AppModule } from '../src/app.module';
 
 const server = express();
-let isInitialized = false;
+let isBootstrapped = false;
 
 // Middleware for rawBody capture (required for Svix webhook signature verification)
 server.use(
@@ -13,15 +18,8 @@ server.use(
   }),
 );
 
-export const createServer = async (): Promise<express.Express> => {
-  if (!isInitialized) {
-    // Dynamic requires inside try/catch boundary for Vercel Serverless Function resilience
-    const { NestFactory } = require('@nestjs/core');
-    const { ValidationPipe } = require('@nestjs/common');
-    const { ExpressAdapter } = require('@nestjs/platform-express');
-    const { DocumentBuilder, SwaggerModule } = require('@nestjs/swagger');
-    const { AppModule } = require('../src/app.module');
-
+async function bootstrap() {
+  if (!isBootstrapped) {
     const app = await NestFactory.create(AppModule, new ExpressAdapter(server), {
       logger: ['error', 'warn', 'log'],
     });
@@ -58,22 +56,14 @@ export const createServer = async (): Promise<express.Express> => {
     SwaggerModule.setup('api/docs', app, document);
 
     await app.init();
-    isInitialized = true;
+    isBootstrapped = true;
   }
   return server;
-};
+}
 
-export default async (req: any, res: any) => {
-  if (req.url === '/ping' || req.url === '/api/ping') {
-    return res.status(200).json({
-      status: 'PONG',
-      serverless: true,
-      timestamp: new Date().toISOString(),
-    });
-  }
-
+export default async function handler(req: any, res: any) {
   try {
-    await createServer();
+    await bootstrap();
     server(req, res);
   } catch (err: any) {
     console.error('[FATAL VERCEL SERVERLESS BOOT ERROR]:', err);
@@ -81,8 +71,7 @@ export default async (req: any, res: any) => {
       statusCode: 500,
       error: 'Internal Server Error',
       message: err?.message || 'Serverless function failed to initialize.',
-      stack: err?.stack || undefined,
       timestamp: new Date().toISOString(),
     });
   }
-};
+}
