@@ -1,21 +1,6 @@
 import { Webhook } from 'svix';
 import { PrismaClient, ReportTarget, ReportStatus } from '@prisma/client';
 
-function sanitizeDbUrl(url?: string): string {
-  if (!url) return 'NOT_CONFIGURED';
-  try {
-    const parsed = new URL(url.trim());
-    const pass = parsed.password || '';
-    const isPlaceholder =
-      pass.includes('YOUR-PASSWORD') ||
-      pass.includes('[YOUR') ||
-      pass === 'password';
-    return `${parsed.protocol}//${parsed.username}:[len=${pass.length},placeholder=${isPlaceholder}]@${parsed.host}${parsed.pathname}`;
-  } catch {
-    return 'INVALID_URL_FORMAT';
-  }
-}
-
 function getPrismaClient(): PrismaClient {
   const primaryUrl = (process.env.DIRECT_URL || process.env.DATABASE_URL || '').trim();
   if (primaryUrl.startsWith('postgres')) {
@@ -31,80 +16,6 @@ const prisma = getPrismaClient();
 export default async function handler(req: any, res: any) {
   const url = req.url || '';
 
-  // Read-only Production Database Verification Endpoint (/api/v1/email/webhook/verify)
-  if (url.includes('/email/webhook/verify')) {
-    const dbInfo = {
-      databaseUrlStatus: sanitizeDbUrl(process.env.DATABASE_URL),
-      directUrlStatus: sanitizeDbUrl(process.env.DIRECT_URL),
-    };
-
-    try {
-      const latestReport = await prisma.report.findFirst({
-        orderBy: { createdAt: 'desc' },
-      });
-
-      const latestAudit = await prisma.auditLog.findFirst({
-        where: {
-          OR: [
-            { action: 'EMAIL_REPORT_RECEIVED' },
-            { action: 'RESEND_INBOUND_EMAIL_WEBHOOK' },
-          ],
-        },
-        orderBy: { createdAt: 'desc' },
-      });
-
-      let parsedDetails = null;
-      if (latestReport && latestReport.details) {
-        try {
-          parsedDetails =
-            typeof latestReport.details === 'string'
-              ? JSON.parse(latestReport.details)
-              : latestReport.details;
-        } catch {
-          parsedDetails = latestReport.details;
-        }
-      }
-
-      return res.status(200).json({
-        status: 'OK',
-        connection: dbInfo,
-        verification: {
-          reportCreated: !!latestReport,
-          report: latestReport
-            ? {
-                id: latestReport.id,
-                reporterUserId: latestReport.reporterUserId,
-                targetType: latestReport.targetType,
-                targetId: latestReport.targetId,
-                reason: latestReport.reason,
-                status: latestReport.status,
-                createdAt: latestReport.createdAt,
-                details: parsedDetails,
-              }
-            : null,
-          auditLogCreated: !!latestAudit,
-          auditLog: latestAudit
-            ? {
-                id: latestAudit.id,
-                action: latestAudit.action,
-                resource: latestAudit.resource,
-                details: latestAudit.details,
-                createdAt: latestAudit.createdAt,
-              }
-            : null,
-        },
-        timestamp: new Date().toISOString(),
-      });
-    } catch (err: any) {
-      return res.status(200).json({
-        status: 'NOTE',
-        connection: dbInfo,
-        message: err?.message || 'Database query note.',
-        timestamp: new Date().toISOString(),
-      });
-    }
-  }
-
   // Resend Inbound Email Webhook Route (/api/v1/email/webhook)
   if (url.includes('/email/webhook')) {
     if (req.method !== 'POST' && req.method !== 'GET') {
@@ -115,9 +26,6 @@ export default async function handler(req: any, res: any) {
       return res.status(200).json({
         status: 'OK',
         message: 'Resend email received webhook endpoint active.',
-        resendWebhookSecretConfigured: !!process.env.RESEND_WEBHOOK_SECRET,
-        databaseUrlStatus: sanitizeDbUrl(process.env.DATABASE_URL),
-        directUrlStatus: sanitizeDbUrl(process.env.DIRECT_URL),
         timestamp: new Date().toISOString(),
       });
     }
@@ -293,15 +201,12 @@ export default async function handler(req: any, res: any) {
     }
   }
 
-  // Root Backend Health Metadata Route (/api/v1)
+  // Safe Production Health Endpoint (/api/v1)
   return res.status(200).json({
     status: 'OK',
     name: 'RECHERCHE V1 Backend API',
     version: '1.0.0-rc1',
     endpoint: url,
-    resendWebhookSecretConfigured: !!process.env.RESEND_WEBHOOK_SECRET,
-    databaseUrlStatus: sanitizeDbUrl(process.env.DATABASE_URL),
-    directUrlStatus: sanitizeDbUrl(process.env.DIRECT_URL),
     timestamp: new Date().toISOString(),
   });
 }
