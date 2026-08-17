@@ -73,15 +73,16 @@ export const RechercheSendButton: React.FC<{
 );
 
 // ----------------------------------------------------------------------
-// 2. CUSTOM WAVEFORM VOICE MESSAGE PLAYER BUBBLE (IMAGE 5 REFERENCE)
+// 2. CUSTOM WAVEFORM VOICE MESSAGE PLAYER BUBBLE (DYNAMIC REAL DURATION & PLAYBACK)
 // ----------------------------------------------------------------------
 const CustomVoicePlayer: React.FC<{
   mediaUrl?: string;
   durationSeconds?: number;
   isUser: boolean;
-}> = ({ mediaUrl, durationSeconds = 5, isUser }) => {
+}> = ({ mediaUrl, durationSeconds, isUser }) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
+  const [detectedDuration, setDetectedDuration] = useState<number>(durationSeconds || 0);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
@@ -89,16 +90,33 @@ const CustomVoicePlayer: React.FC<{
     const audio = new Audio(mediaUrl);
     audioRef.current = audio;
 
-    audio.ontimeupdate = () => {
+    const handleLoadedMetadata = () => {
+      if (audio.duration && !isNaN(audio.duration) && isFinite(audio.duration)) {
+        setDetectedDuration(Math.round(audio.duration));
+      }
+    };
+
+    const handleTimeUpdate = () => {
       setCurrentTime(audio.currentTime);
     };
 
-    audio.onended = () => {
+    const handleEnded = () => {
       setIsPlaying(false);
       setCurrentTime(0);
     };
 
+    audio.addEventListener('loadedmetadata', handleLoadedMetadata);
+    audio.addEventListener('timeupdate', handleTimeUpdate);
+    audio.addEventListener('ended', handleEnded);
+
+    if (audio.duration && !isNaN(audio.duration) && isFinite(audio.duration)) {
+      setDetectedDuration(Math.round(audio.duration));
+    }
+
     return () => {
+      audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
+      audio.removeEventListener('timeupdate', handleTimeUpdate);
+      audio.removeEventListener('ended', handleEnded);
       audio.pause();
       audioRef.current = null;
     };
@@ -106,7 +124,8 @@ const CustomVoicePlayer: React.FC<{
 
   const togglePlay = () => {
     if (!audioRef.current && mediaUrl) {
-      audioRef.current = new Audio(mediaUrl);
+      const audio = new Audio(mediaUrl);
+      audioRef.current = audio;
     }
     if (!audioRef.current) return;
 
@@ -119,8 +138,8 @@ const CustomVoicePlayer: React.FC<{
     }
   };
 
-  const totalSecs = durationSeconds || (audioRef.current?.duration ? Math.round(audioRef.current.duration) : 5);
-  const progressPercent = totalSecs > 0 ? (currentTime / totalSecs) * 100 : 0;
+  const finalSecs = detectedDuration || durationSeconds || (audioRef.current?.duration ? Math.round(audioRef.current.duration) : 0);
+  const progressPercent = finalSecs > 0 ? (currentTime / finalSecs) * 100 : 0;
 
   const formatSecs = (s: number) => {
     const m = Math.floor(s / 60);
@@ -128,7 +147,6 @@ const CustomVoicePlayer: React.FC<{
     return `${m}:${sec < 10 ? '0' : ''}${sec}`;
   };
 
-  // Generate simulated audio waveform bars
   const waveformBars = [40, 70, 30, 90, 60, 100, 45, 80, 55, 95, 35, 75, 50, 85, 65, 40, 90, 60];
 
   return (
@@ -145,6 +163,7 @@ const CustomVoicePlayer: React.FC<{
       <button
         type="button"
         onClick={togglePlay}
+        aria-label={isPlaying ? "Mettre en pause" : "Lire la note vocale"}
         style={{
           width: '36px',
           height: '36px',
@@ -199,7 +218,7 @@ const CustomVoicePlayer: React.FC<{
             fontWeight: 700,
           }}
         >
-          <span>{isPlaying ? formatSecs(currentTime) : formatSecs(totalSecs)}</span>
+          <span>{isPlaying ? formatSecs(currentTime) : formatSecs(finalSecs)}</span>
           <span>🎤 Voice</span>
         </div>
       </div>
@@ -226,6 +245,7 @@ export const ActiveChatView: React.FC<ActiveChatViewProps> = ({
   // Composer States: IDLE, RECORDING, PAUSED
   const [recordingState, setRecordingState] = useState<'IDLE' | 'RECORDING' | 'PAUSED'>('IDLE');
   const [recordTimeSeconds, setRecordTimeSeconds] = useState(0);
+  const [liveMicLevels, setLiveMicLevels] = useState<number[]>([25, 40, 20, 60, 30, 75, 45, 50, 35, 65, 30, 80, 50, 40, 60, 35, 70, 45]);
 
   // Attachment & Reply States
   const [isPlusMenuOpen, setIsPlusMenuOpen] = useState(false);
@@ -258,14 +278,41 @@ export const ActiveChatView: React.FC<ActiveChatViewProps> = ({
       window.open(msg.mediaUrl, '_blank');
     }
   };
+
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
+  const audioStreamRef = useRef<MediaStream | null>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const analyserRef = useRef<AnalyserNode | null>(null);
+  const animFrameRef = useRef<number | null>(null);
+  const recordStartTimeRef = useRef<number>(0);
+  const totalRecordedMsRef = useRef<number>(0);
   const timerIntervalRef = useRef<any>(null);
   const chatBottomRef = useRef<HTMLDivElement>(null);
 
+  const cleanupAudioResources = () => {
+    if (animFrameRef.current) {
+      cancelAnimationFrame(animFrameRef.current);
+      animFrameRef.current = null;
+    }
+    if (timerIntervalRef.current) {
+      clearInterval(timerIntervalRef.current);
+      timerIntervalRef.current = null;
+    }
+    if (audioStreamRef.current) {
+      audioStreamRef.current.getTracks().forEach((track) => track.stop());
+      audioStreamRef.current = null;
+    }
+    if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
+      audioContextRef.current.close().catch(() => {});
+      audioContextRef.current = null;
+    }
+    analyserRef.current = null;
+  };
+
   useEffect(() => {
     return () => {
-      if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
+      cleanupAudioResources();
     };
   }, []);
 
@@ -341,7 +388,7 @@ export const ActiveChatView: React.FC<ActiveChatViewProps> = ({
     setReplyingToMessage(null);
   };
 
-  // 1. VOICE RECORDING ENGINE (START, PAUSE, RESUME, DISCARD, SEND)
+  // 1. REAL VOICE RECORDING ENGINE WITH WEB AUDIO API SPECTRUM & PRECISE TIMER
   const startRecording = async () => {
     try {
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
@@ -349,7 +396,41 @@ export const ActiveChatView: React.FC<ActiveChatViewProps> = ({
         return;
       }
 
+      cleanupAudioResources();
+
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      audioStreamRef.current = stream;
+
+      // Web Audio API Spectrum Analyser for Live Mic Visualization
+      const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const source = audioCtx.createMediaStreamSource(stream);
+      const analyser = audioCtx.createAnalyser();
+      analyser.fftSize = 64;
+      analyser.smoothingTimeConstant = 0.75;
+      source.connect(analyser);
+
+      audioContextRef.current = audioCtx;
+      analyserRef.current = analyser;
+
+      const dataArray = new Uint8Array(analyser.frequencyBinCount);
+
+      const updateLiveWaveform = () => {
+        if (!analyserRef.current) return;
+        analyserRef.current.getByteFrequencyData(dataArray);
+
+        const newBars: number[] = [];
+        for (let i = 0; i < 18; i++) {
+          const rawVal = dataArray[i] || 0;
+          const barHeight = Math.max(15, Math.min(100, Math.round((rawVal / 220) * 100)));
+          newBars.push(barHeight);
+        }
+
+        setLiveMicLevels(newBars);
+        animFrameRef.current = requestAnimationFrame(updateLiveWaveform);
+      };
+
+      updateLiveWaveform();
+
       const recorder = new MediaRecorder(stream);
       mediaRecorderRef.current = recorder;
       audioChunksRef.current = [];
@@ -360,15 +441,39 @@ export const ActiveChatView: React.FC<ActiveChatViewProps> = ({
         }
       };
 
-      recorder.onstop = () => {
+      recordStartTimeRef.current = Date.now();
+      totalRecordedMsRef.current = 0;
+
+      recorder.onstop = async () => {
+        const elapsedMs = totalRecordedMsRef.current + (recordStartTimeRef.current ? Date.now() - recordStartTimeRef.current : 0);
+        let realDurationSecs = Math.max(1, Math.round(elapsedMs / 1000));
+
         const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
         const audioUrl = URL.createObjectURL(audioBlob);
+
+        // Decode metadata duration for 100% precision
+        try {
+          const tempAudio = new Audio(audioUrl);
+          await new Promise<void>((resolve) => {
+            tempAudio.onloadedmetadata = () => {
+              if (tempAudio.duration && !isNaN(tempAudio.duration) && isFinite(tempAudio.duration)) {
+                realDurationSecs = Math.max(1, Math.round(tempAudio.duration));
+              }
+              resolve();
+            };
+            tempAudio.onerror = () => resolve();
+            setTimeout(resolve, 350);
+          });
+        } catch (e) {
+          // Fallback to elapsed recording time
+        }
+
         if (onSendMediaMessage) {
           onSendMediaMessage({
             type: 'voice',
             text: '🎤 Note vocale',
             mediaUrl: audioUrl,
-            durationSeconds: recordTimeSeconds || 3,
+            durationSeconds: realDurationSecs,
             replyToMessageId: replyingToMessage?.id,
             replyTo: replyingToMessage
               ? {
@@ -382,9 +487,10 @@ export const ActiveChatView: React.FC<ActiveChatViewProps> = ({
               : undefined,
           });
         } else {
-          onSendMessage(`🎤 Note vocale (${recordTimeSeconds}s)`);
+          onSendMessage(`🎤 Note vocale (${realDurationSecs}s)`);
         }
-        stream.getTracks().forEach((track) => track.stop());
+
+        cleanupAudioResources();
         setReplyingToMessage(null);
       };
 
@@ -393,9 +499,12 @@ export const ActiveChatView: React.FC<ActiveChatViewProps> = ({
       setRecordTimeSeconds(0);
 
       timerIntervalRef.current = setInterval(() => {
-        setRecordTimeSeconds((prev) => prev + 1);
-      }, 1000);
+        const ms = totalRecordedMsRef.current + (Date.now() - recordStartTimeRef.current);
+        setRecordTimeSeconds(Math.floor(ms / 1000));
+      }, 200);
     } catch (err) {
+      cleanupAudioResources();
+      setRecordingState('IDLE');
       alert("Permission microphone refusée ou indisponible.");
     }
   };
@@ -403,18 +512,31 @@ export const ActiveChatView: React.FC<ActiveChatViewProps> = ({
   const pauseRecording = () => {
     if (mediaRecorderRef.current && recordingState === 'RECORDING') {
       mediaRecorderRef.current.pause();
+      totalRecordedMsRef.current += Date.now() - recordStartTimeRef.current;
+      recordStartTimeRef.current = 0;
       setRecordingState('PAUSED');
       if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
+      if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
+      if (audioContextRef.current && audioContextRef.current.state === 'running') {
+        audioContextRef.current.suspend().catch(() => {});
+      }
     }
   };
 
   const resumeRecording = () => {
     if (mediaRecorderRef.current && recordingState === 'PAUSED') {
       mediaRecorderRef.current.resume();
+      recordStartTimeRef.current = Date.now();
       setRecordingState('RECORDING');
+
+      if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
+        audioContextRef.current.resume().catch(() => {});
+      }
+
       timerIntervalRef.current = setInterval(() => {
-        setRecordTimeSeconds((prev) => prev + 1);
-      }, 1000);
+        const ms = totalRecordedMsRef.current + (Date.now() - recordStartTimeRef.current);
+        setRecordTimeSeconds(Math.floor(ms / 1000));
+      }, 200);
     }
   };
 
@@ -422,16 +544,16 @@ export const ActiveChatView: React.FC<ActiveChatViewProps> = ({
     if (mediaRecorderRef.current && (recordingState === 'RECORDING' || recordingState === 'PAUSED')) {
       mediaRecorderRef.current.stop();
       setRecordingState('IDLE');
-      if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
     }
   };
 
   const discardRecording = () => {
     if (mediaRecorderRef.current && (recordingState === 'RECORDING' || recordingState === 'PAUSED')) {
-      mediaRecorderRef.current.onstop = null; // Suppress send
+      mediaRecorderRef.current.onstop = null; // Suppress auto send callback
       mediaRecorderRef.current.stop();
+      cleanupAudioResources();
       setRecordingState('IDLE');
-      if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
+      setRecordTimeSeconds(0);
     }
   };
 
@@ -992,15 +1114,15 @@ export const ActiveChatView: React.FC<ActiveChatViewProps> = ({
                 {formatRecordTime(recordTimeSeconds)}
               </span>
               <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '2px', height: '22px' }}>
-                {[40, 70, 30, 90, 60, 100, 45, 80, 55, 95, 35, 75, 50, 85, 65, 40, 90, 60].map((h, i) => (
+                {liveMicLevels.map((h, i) => (
                   <span
                     key={i}
                     style={{
                       flex: 1,
-                      height: recordingState === 'RECORDING' ? `${Math.max(20, (h + recordTimeSeconds * 10) % 100)}%` : `${h}%`,
+                      height: recordingState === 'RECORDING' ? `${h}%` : '20%',
                       backgroundColor: recordingState === 'RECORDING' ? '#5B21B6' : '#94A3B8',
                       borderRadius: '2px',
-                      transition: 'height 0.15s ease',
+                      transition: 'height 0.08s ease',
                     }}
                   />
                 ))}
