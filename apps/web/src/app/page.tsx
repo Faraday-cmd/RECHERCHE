@@ -63,6 +63,7 @@ const initialProviders: ProviderSummary[] = [
     rating: 4.9,
     reviewCount: 28,
     verified: true,
+    avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&q=80&w=300',
   },
   {
     id: 'prov-2',
@@ -75,6 +76,7 @@ const initialProviders: ProviderSummary[] = [
     reviewCount: 64,
     verified: true,
     campusesLabel: 'Campus Douala & Yaoundé',
+    avatarUrl: 'https://images.unsplash.com/photo-1523050854058-8df90110c9f1?auto=format&fit=crop&q=80&w=300',
   },
   {
     id: 'prov-3',
@@ -86,6 +88,7 @@ const initialProviders: ProviderSummary[] = [
     rating: 5.0,
     reviewCount: 42,
     verified: true,
+    avatarUrl: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?auto=format&fit=crop&q=80&w=300',
   },
   {
     id: 'prov-4',
@@ -97,6 +100,7 @@ const initialProviders: ProviderSummary[] = [
     rating: 4.7,
     reviewCount: 19,
     verified: false,
+    avatarUrl: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&q=80&w=300',
   },
 ];
 

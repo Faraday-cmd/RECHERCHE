@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 
 export interface ProviderSummary {
   id: string;
@@ -23,6 +23,8 @@ export function CompactProviderCard({
   provider,
   onSelect,
 }: CompactProviderCardProps) {
+  const [imageError, setImageError] = useState(false);
+
   const roleBadges: Record<
     ProviderSummary['role'],
     { label: string; bg: string; color: string; accentColor: string }
@@ -34,6 +36,8 @@ export function CompactProviderCard({
   };
 
   const badge = roleBadges[provider.role];
+  const initialLetter = provider.name ? provider.name.charAt(0).toUpperCase() : 'P';
+  const showImage = Boolean(provider.avatarUrl && !imageError);
 
   return (
     <article
@@ -75,13 +79,13 @@ export function CompactProviderCard({
         }}
       />
 
-      {/* Left Avatar Thumbnail */}
+      {/* Left Avatar Thumbnail - Circular Profile Photo with Verified Badge */}
       <div style={{ position: 'relative', flexShrink: 0, marginLeft: '4px' }}>
         <div
           style={{
-            width: '54px',
-            height: '54px',
-            borderRadius: '14px',
+            width: '58px',
+            height: '58px',
+            borderRadius: '9999px',
             backgroundColor: '#EDE9FE',
             color: '#5B21B6',
             fontWeight: 800,
@@ -91,20 +95,32 @@ export function CompactProviderCard({
             justifyContent: 'center',
             border: '2px solid #DDD6FE',
             overflow: 'hidden',
+            boxShadow: '0 2px 6px rgba(15, 23, 42, 0.06)',
           }}
         >
-          {provider.avatarUrl ? (
-            <img src={provider.avatarUrl} alt={provider.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          {showImage ? (
+            <img
+              src={provider.avatarUrl}
+              alt={provider.name}
+              onError={() => setImageError(true)}
+              style={{
+                width: '100%',
+                height: '100%',
+                objectFit: 'cover',
+                objectPosition: 'center',
+                borderRadius: '9999px',
+              }}
+            />
           ) : (
-            provider.name.charAt(0)
+            <span>{initialLetter}</span>
           )}
         </div>
         {provider.verified && (
           <span
             style={{
               position: 'absolute',
-              bottom: '-3px',
-              right: '-3px',
+              bottom: '0px',
+              right: '0px',
               backgroundColor: '#059669',
               color: '#FFFFFF',
               fontSize: '10px',
@@ -116,6 +132,8 @@ export function CompactProviderCard({
               justifyContent: 'center',
               border: '2px solid #FFFFFF',
               fontWeight: 800,
+              boxShadow: '0 1px 3px rgba(0, 0, 0, 0.15)',
+              zIndex: 2,
             }}
             title="Prestataire Contrôlé"
           >
