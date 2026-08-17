@@ -937,242 +937,268 @@ export const ActiveChatView: React.FC<ActiveChatViewProps> = ({
         </div>
       )}
 
-      {/* 5. MULTIMEDIA COMPOSER (DYNAMIC 4-STATE MACHINE) */}
-      {recordingState !== 'IDLE' ? (
-        /* STATE C: DEDICATED VOICE RECORDING BAR (IMAGE 4 REFERENCE) */
-        <div
-          style={{
-            padding: '14px 18px',
-            backgroundColor: '#FAF5FF',
-            borderTop: '1px solid #DDD6FE',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: '12px',
-            flexShrink: 0,
-          }}
-        >
-          {/* 🗑️ DISCARD / TRASH BUTTON */}
-          <button
-            type="button"
-            onClick={discardRecording}
-            title="Annuler et supprimer l'enregistrement"
+      {/* 5. FLOATING PREMIUM MULTIMEDIA COMPOSER (SCREENSHOT 2 REFERENCE) */}
+      <div
+        style={{
+          padding: '10px 14px 14px 14px',
+          backgroundColor: '#F8FAFC',
+          position: 'sticky',
+          bottom: 0,
+          zIndex: 30,
+          flexShrink: 0,
+        }}
+      >
+        {recordingState !== 'IDLE' ? (
+          /* STATE C: DEDICATED VOICE RECORDING BAR (IMAGE 4 REFERENCE) */
+          <div
             style={{
-              width: '40px',
-              height: '40px',
-              borderRadius: '50%',
-              backgroundColor: '#FEF2F2',
-              color: '#DC2626',
-              border: '1px solid #FCA5A5',
-              fontSize: '16px',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              flexShrink: 0,
-            }}
-          >
-            🗑️
-          </button>
-
-          {/* TIMER & ANIMATED WAVEFORM */}
-          <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '12px', padding: '0 8px' }}>
-            <span style={{ fontSize: '14px', fontWeight: 900, color: '#5B21B6', fontFamily: 'monospace' }}>
-              {formatRecordTime(recordTimeSeconds)}
-            </span>
-            <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '3px', height: '24px' }}>
-              {[40, 70, 30, 90, 60, 100, 45, 80, 55, 95, 35, 75, 50, 85, 65, 40, 90, 60].map((h, i) => (
-                <span
-                  key={i}
-                  style={{
-                    flex: 1,
-                    height: recordingState === 'RECORDING' ? `${Math.max(20, (h + recordTimeSeconds * 10) % 100)}%` : `${h}%`,
-                    backgroundColor: recordingState === 'RECORDING' ? '#5B21B6' : '#94A3B8',
-                    borderRadius: '2px',
-                    transition: 'height 0.15s ease',
-                  }}
-                />
-              ))}
-            </div>
-          </div>
-
-          {/* PAUSE / RESUME TOGGLE BUTTON */}
-          <button
-            type="button"
-            onClick={recordingState === 'RECORDING' ? pauseRecording : resumeRecording}
-            title={recordingState === 'RECORDING' ? 'Mettre en pause' : 'Reprendre l\'enregistrement'}
-            style={{
-              width: '40px',
-              height: '40px',
-              borderRadius: '50%',
-              backgroundColor: '#F5F3FF',
-              color: '#5B21B6',
+              padding: '10px 14px',
+              backgroundColor: '#FFFFFF',
+              borderRadius: '24px',
               border: '1px solid #DDD6FE',
-              fontSize: '16px',
-              cursor: 'pointer',
+              boxShadow: '0 10px 30px -5px rgba(91, 33, 182, 0.15), 0 4px 12px rgba(15, 23, 42, 0.05)',
               display: 'flex',
               alignItems: 'center',
-              justifyContent: 'center',
-              flexShrink: 0,
+              justifyContent: 'space-between',
+              gap: '10px',
             }}
           >
-            {recordingState === 'RECORDING' ? '⏸️' : '▶️'}
-          </button>
-
-          {/* REUSABLE RECHERCHE SEND BUTTON */}
-          <RechercheSendButton onClick={finalizeSendRecording} title="Envoyer le message vocal" />
-        </div>
-      ) : (
-        /* STATE A & B: STANDARD COMPOSER BAR (IDLE VS TYPING / ATTACHING) */
-        <form
-          onSubmit={handleSend}
-          style={{
-            padding: '14px 18px',
-            backgroundColor: '#FFFFFF',
-            borderTop: '1px solid #E2E8F0',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '10px',
-            position: 'relative',
-            flexShrink: 0,
-          }}
-        >
-          {/* POPUP MENU FOR ATTACHMENTS (+) */}
-          {isPlusMenuOpen && (
-            <div
-              style={{
-                position: 'absolute',
-                bottom: '64px',
-                left: '18px',
-                backgroundColor: '#FFFFFF',
-                borderRadius: '18px',
-                border: '1px solid #E2E8F0',
-                boxShadow: '0 10px 30px -5px rgba(15, 23, 42, 0.18)',
-                padding: '8px',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '4px',
-                zIndex: 50,
-                minWidth: '170px',
-              }}
-            >
-              <button
-                type="button"
-                onClick={() => photoInputRef.current?.click()}
-                style={{
-                  padding: '10px 14px',
-                  borderRadius: '12px',
-                  border: 'none',
-                  backgroundColor: '#F8FAFC',
-                  color: '#0F172A',
-                  fontSize: '13.5px',
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '10px',
-                }}
-              >
-                <span>📷</span>
-                <span>Photo / Image</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => documentInputRef.current?.click()}
-                style={{
-                  padding: '10px 14px',
-                  borderRadius: '12px',
-                  border: 'none',
-                  backgroundColor: '#F8FAFC',
-                  color: '#0F172A',
-                  fontSize: '13.5px',
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '10px',
-                }}
-              >
-                <span>📎</span>
-                <span>Document</span>
-              </button>
-            </div>
-          )}
-
-          {/* PLUS (+) ATTACHMENT BUTTON */}
-          <button
-            type="button"
-            onClick={() => setIsPlusMenuOpen(!isPlusMenuOpen)}
-            title="Joindre une photo ou document"
-            style={{
-              width: '42px',
-              height: '42px',
-              borderRadius: '50%',
-              border: '1px solid #CBD5E1',
-              backgroundColor: isPlusMenuOpen ? '#5B21B6' : '#F8FAFC',
-              color: isPlusMenuOpen ? '#FFFFFF' : '#0F172A',
-              fontSize: '20px',
-              fontWeight: 800,
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              flexShrink: 0,
-              transition: 'all 0.15s ease',
-            }}
-          >
-            +
-          </button>
-
-          {/* MAIN TEXT CAPTION INPUT */}
-          <input
-            type="text"
-            placeholder={pendingAttachment ? "Ajoutez un message / légende..." : "Écrivez un message..."}
-            value={inputText}
-            onChange={(e) => setInputText(e.target.value)}
-            aria-label="Votre message"
-            style={{
-              flex: 1,
-              minHeight: '44px',
-              padding: '0 18px',
-              borderRadius: '9999px',
-              border: '1px solid #CBD5E1',
-              fontSize: '14px',
-              color: '#0F172A',
-              backgroundColor: '#F8FAFC',
-              outline: 'none',
-            }}
-          />
-
-          {/* DYNAMIC RIGHT ACTION: MICROPHONE (EMPTY TEXT) VS REUSABLE SEND BUTTON (TEXT / ATTACHMENT) */}
-          {!inputText.trim() && !pendingAttachment ? (
+            {/* 🗑️ DISCARD / TRASH BUTTON */}
             <button
               type="button"
-              onClick={startRecording}
-              title="Enregistrer un message vocal"
+              onClick={discardRecording}
+              title="Annuler et supprimer l'enregistrement"
               style={{
-                width: '42px',
-                height: '42px',
+                width: '38px',
+                height: '38px',
                 borderRadius: '50%',
-                border: 'none',
-                backgroundColor: '#F5F3FF',
-                color: '#5B21B6',
-                fontSize: '18px',
+                backgroundColor: '#FEF2F2',
+                color: '#DC2626',
+                border: '1px solid #FCA5A5',
+                fontSize: '15px',
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 flexShrink: 0,
-                boxShadow: '0 2px 8px rgba(91, 33, 182, 0.15)',
               }}
             >
-              🎤
+              🗑️
             </button>
-          ) : (
-            <RechercheSendButton title="Envoyer le message" />
-          )}
-        </form>
-      )}
+
+            {/* TIMER & ANIMATED WAVEFORM */}
+            <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '10px', padding: '0 4px', minWidth: 0 }}>
+              <span style={{ fontSize: '13px', fontWeight: 900, color: '#5B21B6', fontFamily: 'monospace' }}>
+                {formatRecordTime(recordTimeSeconds)}
+              </span>
+              <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '2px', height: '22px' }}>
+                {[40, 70, 30, 90, 60, 100, 45, 80, 55, 95, 35, 75, 50, 85, 65, 40, 90, 60].map((h, i) => (
+                  <span
+                    key={i}
+                    style={{
+                      flex: 1,
+                      height: recordingState === 'RECORDING' ? `${Math.max(20, (h + recordTimeSeconds * 10) % 100)}%` : `${h}%`,
+                      backgroundColor: recordingState === 'RECORDING' ? '#5B21B6' : '#94A3B8',
+                      borderRadius: '2px',
+                      transition: 'height 0.15s ease',
+                    }}
+                  />
+                ))}
+              </div>
+            </div>
+
+            {/* PAUSE / RESUME TOGGLE BUTTON */}
+            <button
+              type="button"
+              onClick={recordingState === 'RECORDING' ? pauseRecording : resumeRecording}
+              title={recordingState === 'RECORDING' ? 'Mettre en pause' : 'Reprendre l\'enregistrement'}
+              style={{
+                width: '38px',
+                height: '38px',
+                borderRadius: '50%',
+                backgroundColor: '#F5F3FF',
+                color: '#5B21B6',
+                border: '1px solid #DDD6FE',
+                fontSize: '15px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0,
+              }}
+            >
+              {recordingState === 'RECORDING' ? '⏸️' : '▶️'}
+            </button>
+
+            {/* REUSABLE RECHERCHE SEND BUTTON */}
+            <RechercheSendButton onClick={finalizeSendRecording} title="Envoyer le message vocal" />
+          </div>
+        ) : (
+          /* STATE A & B: FLOATING CAPSULE COMPOSER BAR (SCREENSHOT 2 DESIGN) */
+          <form
+            onSubmit={handleSend}
+            style={{
+              backgroundColor: '#FFFFFF',
+              borderRadius: '9999px',
+              border: '1px solid #E2E8F0',
+              boxShadow: '0 8px 24px -4px rgba(15, 23, 42, 0.08), 0 2px 6px rgba(91, 33, 182, 0.04)',
+              padding: '6px 8px 6px 12px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              position: 'relative',
+              transition: 'all 0.2s ease',
+            }}
+          >
+            {/* POPUP MENU FOR ATTACHMENTS (+) */}
+            {isPlusMenuOpen && (
+              <div
+                style={{
+                  position: 'absolute',
+                  bottom: '56px',
+                  left: '8px',
+                  backgroundColor: '#FFFFFF',
+                  borderRadius: '18px',
+                  border: '1px solid #E2E8F0',
+                  boxShadow: '0 12px 32px -4px rgba(15, 23, 42, 0.18)',
+                  padding: '8px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '4px',
+                  zIndex: 50,
+                  minWidth: '170px',
+                }}
+              >
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsPlusMenuOpen(false);
+                    photoInputRef.current?.click();
+                  }}
+                  style={{
+                    padding: '10px 14px',
+                    borderRadius: '12px',
+                    border: 'none',
+                    backgroundColor: '#F8FAFC',
+                    color: '#0F172A',
+                    fontSize: '13px',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '10px',
+                  }}
+                >
+                  <span>📷</span>
+                  <span>Photo / Image</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsPlusMenuOpen(false);
+                    documentInputRef.current?.click();
+                  }}
+                  style={{
+                    padding: '10px 14px',
+                    borderRadius: '12px',
+                    border: 'none',
+                    backgroundColor: '#F8FAFC',
+                    color: '#0F172A',
+                    fontSize: '13px',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '10px',
+                  }}
+                >
+                  <span>📎</span>
+                  <span>Document</span>
+                </button>
+              </div>
+            )}
+
+            {/* PLUS (+) ATTACHMENT BUTTON */}
+            <button
+              type="button"
+              onClick={() => setIsPlusMenuOpen(!isPlusMenuOpen)}
+              title="Joindre une photo ou document"
+              style={{
+                width: '36px',
+                height: '36px',
+                borderRadius: '50%',
+                border: 'none',
+                backgroundColor: isPlusMenuOpen ? '#5B21B6' : '#F1F5F9',
+                color: isPlusMenuOpen ? '#FFFFFF' : '#475569',
+                fontSize: '18px',
+                fontWeight: 800,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flexShrink: 0,
+                transition: 'all 0.15s ease',
+              }}
+            >
+              +
+            </button>
+
+            {/* MAIN TEXT CAPTION INPUT */}
+            <input
+              type="text"
+              placeholder={pendingAttachment ? "Ajoutez un message / légende..." : "Écrivez un message..."}
+              value={inputText}
+              onChange={(e) => setInputText(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  handleSend(e);
+                }
+              }}
+              aria-label="Votre message"
+              style={{
+                flex: 1,
+                minHeight: '38px',
+                padding: '0 8px',
+                border: 'none',
+                fontSize: '14px',
+                color: '#0F172A',
+                backgroundColor: 'transparent',
+                outline: 'none',
+              }}
+            />
+
+            {/* DYNAMIC RIGHT ACTION: PREMIUM MICROPHONE (EMPTY TEXT) VS REUSABLE SEND BUTTON (TEXT / ATTACHMENT) */}
+            {!inputText.trim() && !pendingAttachment ? (
+              <button
+                type="button"
+                onClick={startRecording}
+                title="Enregistrer un message vocal"
+                style={{
+                  width: '38px',
+                  height: '38px',
+                  borderRadius: '50%',
+                  border: 'none',
+                  background: 'linear-gradient(135deg, #7C3AED 0%, #5B21B6 100%)',
+                  color: '#FFFFFF',
+                  fontSize: '16px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0,
+                  boxShadow: '0 4px 12px rgba(91, 33, 182, 0.25)',
+                  transition: 'transform 0.15s ease',
+                }}
+              >
+                🎙️
+              </button>
+            ) : (
+              <RechercheSendButton title="Envoyer le message" />
+            )}
+          </form>
+        )}
+      </div>
 
       {/* FULL-SCREEN PHOTO LIGHTBOX VIEWER OVERLAY */}
       {viewingPhotoUrl && (
