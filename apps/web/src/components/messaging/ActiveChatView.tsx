@@ -508,48 +508,51 @@ export const ActiveChatView: React.FC<ActiveChatViewProps> = ({
       {/* 1. CHAT HEADER BAR */}
       <div
         style={{
-          padding: '14px 20px',
+          padding: '10px 16px',
           borderBottom: '1px solid #E2E8F0',
           backgroundColor: '#FFFFFF',
           display: 'flex',
           alignItems: 'center',
-          gap: '12px',
+          gap: '10px',
           flexShrink: 0,
+          minHeight: '58px',
         }}
       >
         <button
           onClick={onBack}
-          aria-label="Retour"
+          aria-label="Retour aux conversations"
+          title="Retour"
           style={{
-            minHeight: '38px',
-            padding: '0 14px',
-            backgroundColor: '#F8FAFC',
-            border: '1px solid #CBD5E1',
-            borderRadius: '9999px',
-            fontSize: '13px',
-            fontWeight: 700,
-            color: '#334155',
+            width: '36px',
+            height: '36px',
+            minWidth: '36px',
+            backgroundColor: '#F1F5F9',
+            border: '1px solid #E2E8F0',
+            borderRadius: '50%',
+            fontSize: '16px',
+            fontWeight: 800,
+            color: '#475569',
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
-            gap: '6px',
+            justifyContent: 'center',
             flexShrink: 0,
+            transition: 'all 0.15s ease',
           }}
         >
           <span>←</span>
-          <span>Retour</span>
         </button>
 
         {/* Circular Avatar */}
         <div
           style={{
-            width: '44px',
-            height: '44px',
+            width: '40px',
+            height: '40px',
             borderRadius: '50%',
             backgroundColor: '#EDE9FE',
             color: '#5B21B6',
             fontWeight: 800,
-            fontSize: '18px',
+            fontSize: '17px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -567,8 +570,18 @@ export const ActiveChatView: React.FC<ActiveChatViewProps> = ({
 
         {/* Recipient Details */}
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-            <h3 style={{ fontSize: '15.5px', fontWeight: 800, color: '#0F172A', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0 }}>
+            <h3
+              style={{
+                fontSize: '15px',
+                fontWeight: 800,
+                color: '#0F172A',
+                margin: 0,
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+              }}
+            >
               {recipientName}
             </h3>
             {verified && (
@@ -581,13 +594,24 @@ export const ActiveChatView: React.FC<ActiveChatViewProps> = ({
                   padding: '2px 7px',
                   borderRadius: '9999px',
                   border: '1px solid #A7F3D0',
+                  flexShrink: 0,
                 }}
               >
                 ✓ VÉRIFIÉ
               </span>
             )}
           </div>
-          <div style={{ fontSize: '12px', color: '#5B21B6', fontWeight: 700, marginTop: '1px' }}>
+          <div
+            style={{
+              fontSize: '12px',
+              color: '#5B21B6',
+              fontWeight: 700,
+              marginTop: '1px',
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+            }}
+          >
             {recipientRole}
           </div>
         </div>
