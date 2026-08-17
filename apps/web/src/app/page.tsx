@@ -863,16 +863,16 @@ export default function HomePage() {
       label: roleLabels.USER,
       icon: roleIcons.USER,
       unreadCount: conversations
-        .filter((c) => !c.roleCode || c.roleCode === 'USER')
-        .reduce((sum, c) => sum + (c.unreadCount || 0), 0),
+        .filter((c) => (!c.roleCode || c.roleCode === 'USER') && (c.unreadCount || 0) > 0)
+        .length,
     },
     ...unlockedRoles.map((r) => ({
       code: r.roleCode,
       label: roleLabels[r.roleCode] || r.roleName,
       icon: roleIcons[r.roleCode] || '🟢',
       unreadCount: conversations
-        .filter((c) => c.roleCode === r.roleCode)
-        .reduce((sum, c) => sum + (c.unreadCount || 0), 0),
+        .filter((c) => c.roleCode === r.roleCode && (c.unreadCount || 0) > 0)
+        .length,
     })),
   ];
 
@@ -898,8 +898,8 @@ export default function HomePage() {
 
   const activeRoleUnreadCount = activeRole
     ? conversations
-        .filter((c) => c.roleCode === activeRole.roleCode)
-        .reduce((sum, c) => sum + (c.unreadCount || 0), 0)
+        .filter((c) => c.roleCode === activeRole.roleCode && (c.unreadCount || 0) > 0)
+        .length
     : 0;
 
   return (
