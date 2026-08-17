@@ -13,6 +13,7 @@ export function DesktopSidebar({
 }: DesktopSidebarProps) {
   const items: { id: NavTab; label: string; icon: string }[] = [
     { id: 'decouverte', label: 'Découverte', icon: '🏠' },
+    { id: 'infos', label: 'Fil d\'Infos', icon: '📢' },
     { id: 'amis', label: 'Amis', icon: '👥' },
     { id: 'messages', label: 'Messages', icon: '💬' },
     { id: 'dashboard', label: 'Dashboard', icon: '📊' },

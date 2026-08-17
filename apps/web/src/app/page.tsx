@@ -914,6 +914,9 @@ export default function HomePage() {
           activeTab={activeTab}
           onTabChange={(tab) => {
             setSelectedProvider(null);
+            if (tab === 'infos') {
+              setFilters((prev) => ({ ...prev, roleFilter: 'INFOS' }));
+            }
             setActiveTab(tab);
           }}
         />
@@ -1009,9 +1012,78 @@ export default function HomePage() {
             </div>
           ) : (
             <>
-              {/* TAB 1: DÉCOUVERTE */}
-              {activeTab === 'decouverte' && (
+              {/* TAB 1: DÉCOUVERTE & TAB 1.5: INFOS */}
+              {(activeTab === 'decouverte' || activeTab === 'infos') && (
                 <div>
+                  {/* TOP SUB-NAV TOGGLE BETWEEN DÉCOUVERTE AND FIL D'INFOS */}
+                  <div
+                    style={{
+                      display: 'flex',
+                      gap: '8px',
+                      marginBottom: '16px',
+                      backgroundColor: '#F1F5F9',
+                      padding: '4px',
+                      borderRadius: '12px',
+                    }}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActiveTab('decouverte');
+                        if (filters.roleFilter === 'INFOS') {
+                          setFilters((prev) => ({ ...prev, roleFilter: 'LEHRER' }));
+                        }
+                      }}
+                      style={{
+                        flex: 1,
+                        minHeight: '38px',
+                        borderRadius: '8px',
+                        border: 'none',
+                        backgroundColor: activeTab === 'decouverte' && filters.roleFilter !== 'INFOS' ? '#FFFFFF' : 'transparent',
+                        color: activeTab === 'decouverte' && filters.roleFilter !== 'INFOS' ? '#5B21B6' : '#64748B',
+                        fontWeight: activeTab === 'decouverte' && filters.roleFilter !== 'INFOS' ? 800 : 600,
+                        fontSize: '13px',
+                        cursor: 'pointer',
+                        boxShadow: activeTab === 'decouverte' && filters.roleFilter !== 'INFOS' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                        transition: 'all 0.15s ease',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '6px',
+                      }}
+                    >
+                      <span>🏠</span>
+                      <span>Découverte</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setFilters((prev) => ({ ...prev, roleFilter: 'INFOS' }));
+                        setActiveTab('infos');
+                      }}
+                      style={{
+                        flex: 1,
+                        minHeight: '38px',
+                        borderRadius: '8px',
+                        border: 'none',
+                        backgroundColor: activeTab === 'infos' || (activeTab === 'decouverte' && filters.roleFilter === 'INFOS') ? '#FFFFFF' : 'transparent',
+                        color: activeTab === 'infos' || (activeTab === 'decouverte' && filters.roleFilter === 'INFOS') ? '#5B21B6' : '#64748B',
+                        fontWeight: activeTab === 'infos' || (activeTab === 'decouverte' && filters.roleFilter === 'INFOS') ? 800 : 600,
+                        fontSize: '13px',
+                        cursor: 'pointer',
+                        boxShadow: activeTab === 'infos' || (activeTab === 'decouverte' && filters.roleFilter === 'INFOS') ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                        transition: 'all 0.15s ease',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '6px',
+                      }}
+                    >
+                      <span>📢</span>
+                      <span>Fil d&apos;Infos</span>
+                    </button>
+                  </div>
                   <section style={{ marginBottom: '16px' }}>
                     <div style={{ display: 'flex', gap: '8px' }}>
                       <div style={{ flex: 1, position: 'relative', display: 'flex', alignItems: 'center' }}>
@@ -1668,6 +1740,9 @@ export default function HomePage() {
           activeTab={activeTab}
           onTabChange={(tab) => {
             setSelectedProvider(null);
+            if (tab === 'infos') {
+              setFilters((prev) => ({ ...prev, roleFilter: 'INFOS' }));
+            }
             setActiveTab(tab);
           }}
         />
